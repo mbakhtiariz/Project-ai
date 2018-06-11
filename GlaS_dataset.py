@@ -20,12 +20,14 @@ grade_file = "Grade.csv"
 
 class GlaSDataset(Dataset):
 	""" GlaS Dataset  """
-	def __init__(self, csv_file=data_path+grade_file, root_dir=data_path, transform=None):
+	def __init__(self, csv_file=data_path+grade_file, root_dir=data_path, transform=None, desired_dataset=None):
 		"""
 		Arguments:
 			csv_file: path to the grade csv-file
 			root_dir: path to the map containing the images
 			transform: (optional) transformation to be applied on the sample
+			desired_dataset: (optional) rows where the name does not contains this keyword will be deleted
+					this allows you to split the dataset into 'train' and 'test'
 		"""
 		
 		# File extensions *cough* hardcoded *cough*
@@ -39,8 +41,12 @@ class GlaSDataset(Dataset):
 		self.framework[' grade (GlaS)'] = self.framework[' grade (GlaS)'].str.strip()
 		self.framework[' grade (Sirinukunwattana et al. 2015)'] = self.framework[' grade (Sirinukunwattana et al. 2015)'].str.strip()
 		
+		#Remove all rows not containing the given desired_dataset, allowing to split 'test' and 'train'
+		if desired_dataset:
+			self.framework = self.framework[self.framework['name'].str.contains(desired_dataset) == True]
+		
 		self.root_dir = root_dir
-		self.transform = transform		
+		self.transform = transform	
 		
 	def __len__(self):
 		return len(self.framework)
@@ -79,7 +85,7 @@ class GlaSDataset(Dataset):
 if __name__ == '__main__':
 	
 	#load dataset
-	dataset = GlaSDataset()
+	dataset = GlaSDataset(desired_dataset='test')
 	fig = plt.figure()
 	
 	for i in range(len(dataset)):
