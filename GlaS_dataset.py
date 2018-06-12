@@ -74,6 +74,7 @@ class GlaSDataset(Dataset):
 		
 		#Currently unused, but future-proofing (This will be the supplied preprocessing/data augmentation)
 		if self.transform:
+			#sample['image'] = self.transform(sample['image'])
 			sample = self.transform(sample)
 			
 		return sample
