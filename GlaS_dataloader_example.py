@@ -2,7 +2,7 @@
 # Date: 12-06-2018
 #
 # GlaS DataLoader example and transformation example
-# Version: v1.0
+# Version: v1.1
 
 from __future__ import print_function, division
 import os
@@ -19,52 +19,7 @@ from skimage import io, transform
 
 from GlaS_dataset import GlaSDataset
 
-class Resize(object):
-	"""Resize the image in a sample to a given size.
 
-	Args:
-		output_size (tuple or int): Desired output size. If tuple, output is
-			matched to output_size. If int, smaller of image edges is matched
-			to output_size keeping aspect ratio the same.
-	"""
-
-	def __init__(self,output_size):
-		assert isinstance(output_size,(int,tuple))
-		self.output_size=output_size
-
-	def __call__(self, sample):
-		print('pre [Rescale] sample[\'image\'].shape: ', sample['image'].shape)
-		image = sample['image']
-		new_h, new_w = self.output_size
-		new_h, new_w = int(new_h), int(new_w)
-		img = transform.resize(image, (new_h, new_w))
-		sample['image'] = img
-		
-		anno_image = sample['image_anno']
-		new_h, new_w = self.output_size
-		new_h, new_w = int(new_h), int(new_w)
-		img = transform.resize(anno_image, (new_h, new_w))
-		sample['image_anno'] = img
-		
-		print('post [Rescale] sample[\'image\'].shape: ', sample['image'].shape)
-		
-		return sample
-		
-class ToTensor(object):
-	"""Convert ndarrays in sample to Tensors."""
-
-	def __call__(self, sample):
-		image, image_anno = sample['image'], sample['image_anno']
-
-		# swap color axis because
-		# numpy image: H x W x C
-		# torch image: C X H X W
-		sample['image'] = image.transpose((2, 0, 1))
-		sample['image_anno'] = image.transpose((2, 0, 1))
-		
-		return sample
-
-		
 def imshow(input, title=None):	
 	images_batch = input['image']
 	
@@ -83,14 +38,19 @@ def imshow(input, title=None):
 ##		Including their GlaS grade and (Sirinukunwattana et al. 2015) grade
 if __name__ == '__main__':
 	batch_size = 4
-
+	
+	data_transform = transforms.Compose([transforms.Resize((256,256)),transforms.ToTensor()])
+	
 	#load train dataset
-	GlaS_train_dataset = GlaSDataset(transform=transforms.Compose([Resize((256,256)),ToTensor()]), 
+	GlaS_train_dataset = GlaSDataset(transform=data_transform,
+								transform_anno=data_transform, 
 								desired_dataset='train')
 
 	#load test dataset
-	GlaS_test_dataset = GlaSDataset(transform=Resize((256,256)),
+	GlaS_test_dataset = GlaSDataset(transform=data_transform,
+								transform_anno=data_transform,
 								desired_dataset='test')
+	
 	
 	train_loader = DataLoader(GlaS_train_dataset, 
 							batch_size=batch_size,

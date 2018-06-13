@@ -20,12 +20,13 @@ grade_file = "Grade.csv"
 
 class GlaSDataset(Dataset):
 	""" GlaS Dataset  """
-	def __init__(self, csv_file=data_path+grade_file, root_dir=data_path, transform=None, desired_dataset=None):
+	def __init__(self, csv_file=data_path+grade_file, root_dir=data_path, transform=None, transform_anno=None, desired_dataset=None):
 		"""
 		Arguments:
 			csv_file: path to the grade csv-file
 			root_dir: path to the map containing the images
-			transform: (optional) transformation to be applied on the sample
+			transform: (optional) transformation to be applied on sample['image']
+			transform_anno: (optional) transformation to be applied on the sample['image_anno']
 			desired_dataset: (optional) rows where the name does not contains this keyword will be deleted
 					this allows you to split the dataset into 'train' and 'test'
 		"""
@@ -46,7 +47,8 @@ class GlaSDataset(Dataset):
 			self.framework = self.framework[self.framework['name'].str.contains(desired_dataset) == True]
 		
 		self.root_dir = root_dir
-		self.transform = transform	
+		self.transform = transform
+		self.transform_anno = transform_anno
 		
 	def __len__(self):
 		return len(self.framework)
@@ -74,20 +76,30 @@ class GlaSDataset(Dataset):
 		
 		#Currently unused, but future-proofing (This will be the supplied preprocessing/data augmentation)
 		if self.transform:
-			#sample['image'] = self.transform(sample['image'])
-			sample = self.transform(sample)
-			
+			#PIL-image must be HxWxC, thus must have 3 dimensions
+			if len(sample['image_anno'].shape) == 2:
+				sample['image_anno'] = np.expand_dims(sample['image_anno'], axis=2)
+			sample['image'] = transforms.functional.to_pil_image(sample['image'])
+			sample['image'] = self.transform(sample['image'])
+		
+		if self.transform_anno:
+			#PIL-image must be HxWxC, thus must have 3 dimensions
+			if len(sample['image_anno'].shape) == 2:
+				sample['image_anno'] = np.expand_dims(sample['image_anno'], axis=2)
+			sample['image_anno'] = transforms.functional.to_pil_image(sample['image_anno'])
+			sample['image_anno'] = self.transform_anno(sample['image_anno'])
+		
 		return sample
-		
-		
+
+
 ## Example for the proof-of-concept:
 ## 		Draws the first 4 images and their segmentations
 ##		Including their GlaS grade and (Sirinukunwattana et al. 2015) grade
 if __name__ == '__main__':
 	
 	#load dataset
-	dataset = GlaSDataset(desired_dataset='test')
 	fig = plt.figure()
+	dataset = GlaSDataset(desired_dataset='test')
 	
 	for i in range(len(dataset)):
 		#load a sample
