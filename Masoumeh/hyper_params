@@ -1,0 +1,13 @@
+loss = cross_entropy
+filterNumStart = 8
+lr = 0.00001
+epochs = 10
+lambda2 = 0.0001
+batchSize = 2
+doBatchNorm = 0
+channels = testA_1.bmp, testA_1_anno.bmp
+dropout = 0.3
+depth = 3
+mask = _anno.bmp
+labels = /home/mohsen/masoume/Project-ai-master/data/GlaS/Grade.csv
+dataPath = /home/mohsen/masoumeh/Project-ai-master/data/GlaS/
