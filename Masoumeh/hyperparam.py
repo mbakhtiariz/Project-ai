@@ -5,10 +5,19 @@ def load_hyperparams(param_path):
 
     hyperparams = defaultdict()
 
-    keywords = ["loss",'filterNumStart', "lr", "epochs", "lambda2", "batchSize", "doBatchNorm", "channels", "dropout", "depth",
-                "mask", "labels", "dataPath"]
-    types = ["string", "int", "listfloat", "int", "float", "int", "int", "liststring", "float", "int", "string", "string",
-             "string"]
+    keywords = ["loss",'filterNumStart', "lr", "epochs",
+                "lambda2", "batchSize", "doBatchNorm", "channels",
+                "dropout", "depth", "valid_size", "shuffle",
+                "pin_memory", "num_workers", "tolerance","cls_alpha",
+                "img_w", "img_h", "mask_w", "mask_h"]
+
+
+    types = ["string", "int", "float", "int",
+             "float", "int", "int", "int",
+             "float", "int","float", "string",
+             "string", "int", "float","float",
+             "int", "int", "int", "int"]
+
 
     key_type = {}
     for i in range(len(keywords)):
@@ -20,12 +29,23 @@ def load_hyperparams(param_path):
         # print(info)
         # print('----------------')
         list_value = []
-        if (key_type[info[0]] in ["listfloat", "float"]):
+        if (key_type[info[0]] in ["float"]):
             print(info)
-            hyperparams[info[0]] = list(map(float, info[1].split(',')))
+            #hyperparams[info[0]] = list(map(float, info[1].split(',')))
+            hyperparams[info[0]] = float(info[1])
         elif (key_type[info[0]] in ["int"]):            
-            hyperparams[info[0]] = list(map(int, info[1].split(',')))
+            #hyperparams[info[0]] = list(map(int, info[1].split(',')))
+            hyperparams[info[0]] = int(info[1])
         else:
-            hyperparams[info[0]] = info[1].split(',')
+            #hyperparams[info[0]] = info[1].split(',')
+            hyperparams[info[0]] = info[1]
 
+    print(hyperparams)
     return hyperparams
+
+
+if __name__ == '__main__':
+
+    # Load PARAMS:
+    hyper_params = load_hyperparams("hyper_params")
+    print(hyper_params["batchSize"])

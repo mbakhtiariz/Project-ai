@@ -20,16 +20,16 @@ from hyperparam import load_hyperparams
 
 
 class UNet(nn.Module):
-    def __init__(self, hyper_params, channels = 3):
+    def __init__(self, hyper_params):
         super(UNet, self).__init__()
         
         self.hyper_params = hyper_params
         
         # later will change these to loop over all options for every epoch
-        self.network_depth = int(hyper_params['depth'][0])
-        filter_num = int(hyper_params['filterNumStart'][0])
-        in_channels = int(channels)
-        doBatchNorm = int(hyper_params['doBatchNorm'][0])
+        self.network_depth = int(hyper_params['depth'])
+        filter_num = int(hyper_params['filterNumStart'])
+        in_channels = int(hyper_params['channels'])
+        doBatchNorm = int(hyper_params['doBatchNorm'])
         
         print("----------- Building Encoder -------------")
         self.down_blocks = []
@@ -144,10 +144,9 @@ if __name__ == '__main__':
     # Just for testing Unet:
 
     hyper_params = load_hyperparams("hyper_params")
-    
-    print(len(hyper_params['filterNumStart']))
 
-    net = UNet(hyper_params, channels = 3)
+
+    net = UNet(hyper_params)
     x = Variable(torch.FloatTensor(np.random.random((1,3, 572, 572))))
     seg_out = net(x)
 
