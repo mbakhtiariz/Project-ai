@@ -54,7 +54,7 @@ class UNet(nn.Module):
                 filter_num *= 2
             self.down_blocks.append(block_d)
 
-        self.fc = nn.Linear(1*1*filter_num,3)
+        self.fc = nn.Linear(1*1*filter_num,2)
 
            
         print("----------- Building Decoder -------------")    
@@ -111,6 +111,8 @@ class UNet(nn.Module):
                 x = self.down_blocks[d]['maxpool'](x)
 
         y = F.adaptive_avg_pool2d(x, (1, 1))
+        y = y.reshape(y.size(0), -1)
+        #print(y.size())
         cls_head = self.fc(y)
         # now create the up-sampling path
         for d in range(self.network_depth-1):

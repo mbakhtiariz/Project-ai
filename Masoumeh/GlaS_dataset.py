@@ -80,7 +80,8 @@ class GlaSDataset(Dataset):
         # Currently unused, but future-proofing
         patient_id = self.framework.iloc[index, 1]
 
-        GlaS = self.framework.iloc[index, 2]
+        # !!!!!!!
+        GlaS = 1 if self.framework.iloc[index, 2] == 'malignant' else 0
         grade = self.framework.iloc[index, 3]
 
         sample = {'image': image, 'image_anno': image_anno, 'patient_id': patient_id, 'GlaS': GlaS, 'grade': grade}

@@ -19,7 +19,7 @@ from torchvision import transforms, utils, datasets
 from torch.utils.data.sampler import SubsetRandomSampler
 
 from hyperparam import load_hyperparams
-from masUNet import UNet
+from masUNet_2headed import UNet
 from losses import Jaccard_loss
 from GlaS_dataset import GlaSDataset
 
@@ -113,6 +113,9 @@ if __name__ == '__main__':
     learning_rate = hyper_params["lr"][0]
     lambda2 = hyper_params["lambda2"][0]
 
+
+    #---------- Multi loss param ---------------
+    cls_alpha = 1
     #---------- Validation split params----------
     valid_size = 0.1
     shuffle = True
@@ -193,10 +196,14 @@ if __name__ == '__main__':
     # Build Network:
     net = UNet(hyper_params, channels=3)#.to(device)
 
+
+    # ---------- Define loss criterion -------------
     if (hyper_params['loss'] == "jaccard"):
-        criterion = Jaccard_loss()
+        seg_criterion = Jaccard_loss()
     else:
-        criterion = nn.CrossEntropyLoss()
+        seg_criterion = nn.CrossEntropyLoss()
+
+    cls_criterion = nn.CrossEntropyLoss()
 
 
     optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=lambda2)
@@ -222,15 +229,22 @@ if __name__ == '__main__':
             for batch_index, sampled_batch in enumerate(loader):
                 print("Epoch %d, Iteration %d: sampling images.. " % (epoch, batch_index))
                 images = sampled_batch['image']
-                labels = torch.squeeze(sampled_batch['image_anno'])
+                seg_labels = torch.squeeze(sampled_batch['image_anno'])
+                cls_labels = sampled_batch['GlaS']
+
+
                 print("*******", images.size())
                 if images.size()[0] == 1:
                     continue
                 print("Iteration %d: computing forward pass.." % batch_index)
                 # Forward pass
-                outputs = net(images)
+                seg_out, cls_out = net(images)
                 print("Iteration %d: calculating loss..." % batch_index)
-                loss = criterion(outputs, labels)
+
+                cls_loss = cls_criterion(cls_out, cls_labels)
+                seg_loss = seg_criterion(seg_out, seg_labels)
+
+                loss = seg_loss + cls_alpha*cls_loss
                 print("Iteration %d: doing backward pass..." % batch_index)
                 # Backward and optimize
                 if phase == 'train':
@@ -264,22 +278,27 @@ if __name__ == '__main__':
     model = UNet(hyper_params, 3)
     model.load_state_dict(torch.load('best_model.pth'))
     model.eval()
-    correct = 0
-    total = 0
-    intersection = 0
-    union = 0
+    seg_correct = seg_total = seg_intersection = seg_union = 0.
+    cls_correct = cls_total = 0.
     draw_flag = False
     with torch.no_grad():
         for batch_index, sampled_batch in enumerate(test_loader):
             images = sampled_batch['image']
-            labels = torch.squeeze(sampled_batch['image_anno'])
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0) * labels.size(1) * labels.size(2)
-            correct += (predicted == labels).sum().item()
+            seg_labels = torch.squeeze(sampled_batch['image_anno'])
+            cls_labels = sampled_batch['GlaS']
+            seg_out, cls_out = model(images)
+            _, seg_pred = torch.max(seg_out.data, 1)
+            _, cls_pred = torch.max(cls_out.data, 1)
 
-            intersection += (predicted * labels).sum()
-            union += predicted.sum() + labels.sum()
+            seg_total += seg_labels.size(0) * seg_labels.size(1) * seg_labels.size(2)
+            seg_correct += (seg_pred == seg_labels).sum().item()
+
+            cls_total += cls_labels.size(0)
+            cls_correct += (cls_pred == cls_labels).sum().item()
+
+            seg_intersection += (seg_pred * seg_labels).sum()
+            seg_union += seg_pred.sum() + seg_labels.sum()
+
 
             if batch_index == 2:
                 draw_flag = True
@@ -290,16 +309,15 @@ if __name__ == '__main__':
 
 
 
-    test_acc = 100.0 * float(correct) / float(total)
+    seg_acc_test = 100.0 * seg_correct / seg_total
+    seg_dice_test = 2.0 * float(seg_intersection) / float(seg_union)
 
-    test_dice = 2.0 * float(intersection) / float(union)
-
-
-    print('intersection: ', intersection)
-    print('union: ', union)
-    print('Accuracy of the network on the test images: ' , test_acc)
-    print('Dice of the network on the test images:', test_dice)
-
+    cls_acc_test = 100.0 * cls_correct / cls_total
+    print('intersection: ', seg_intersection)
+    print('union: ', seg_union)
+    print('Accuracy of the network on the test images: ' , seg_acc_test)
+    print('Dice of the network on the test images:', seg_dice_test)
+    print('classification Accuracy of the network on the test images: ', cls_acc_test)
 
     if draw_flag:
         plt.show()

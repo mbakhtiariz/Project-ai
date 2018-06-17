@@ -1,0 +1,25 @@
+Data loader:
+Data augmentation:
+    Rotation, flip
+    Color
+    Blur
+    Crops
+    Elastic deformation
+    Split into train, val and test set/
+
+Model:
+    Unet-----------------------------------> eval()
+    FCN, If you want to compare
+    Loss:
+        BCE/
+        Jaccard/
+
+Training:
+    Adam/
+    Weight decay--------------------------> L2 reguralization: Train/
+    early stopping------------------------> stop if valid loss exceed after few times/
+    learning rate/
+    Metric: Loss + dice------------------->Test
+
+
+Save the best model after validation step/
