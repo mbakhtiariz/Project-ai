@@ -49,28 +49,37 @@ def compute_padding(w, h, target_w, target_h):
     return (x_pad, y_pad, x_pad + (target_w - w) % 2, y_pad + (target_h - h) % 2)
 
 
-def imshow(input, title=None):
-    images_batch = input['image']
-    anno_images_batch = input['image_anno']
+def imshow(original, predection, mask):
 
-    print('images_batch.shape: ', images_batch.shape)
+    images_batch = original
+    anno_images_batch = mask
+    pred_batch = predection
 
     grid = torchvision.utils.make_grid(images_batch, nrow=batch_size)
     grid2 = torchvision.utils.make_grid(anno_images_batch, nrow=batch_size)
+    grid3 = torchvision.utils.make_grid(pred_batch, nrow=batch_size)
 
     print('grid.shape: ', grid.shape)
     print('grid T . shape: ', grid.numpy().transpose((1, 2, 0)).shape)
 
     # plot image and image_anno
-    ax = plt.subplot(2, 1, 1)
+    ax = plt.subplot(3, 1, 1)
     ax.axis('off')
     ax.set_title('Input batch')
     plt.imshow(grid.numpy().transpose((1, 2, 0)))
 
-    ax = plt.subplot(2, 1, 2)
+    # plot image and image_anno
+    ax = plt.subplot(3, 1, 2)
     ax.axis('off')
-    plt.imshow(grid2.numpy().transpose((1, 2, 0)))
-    plt.title('Target segmentations')
+    ax.set_title('mask')
+    plt.imshow(100*grid2.numpy().transpose((1, 2, 0)))
+
+    # plot image and image_anno
+    ax = plt.subplot(3, 1, 3)
+    ax.axis('off')
+    ax.set_title('Input batch')
+    plt.imshow(100*grid3.numpy().transpose((1, 2, 0)))
+    plt.title('Pred')
 
 
 def early_stopping(avg_loss, tolerance):
@@ -201,9 +210,16 @@ if __name__ == '__main__':
         epoch_loss = []
         finish = False
         for phase in ['train', 'val']:
+            if phase == 'train':
+                print("*************** Train phase *************")
+                loader = train_loader
+            elif phase == 'val':
+                print("*************** Valid phase *************")
+                loader = valid_loader
+
             # Iterate over data.
             avg_loss = []
-            for batch_index, sampled_batch in enumerate(train_loader):
+            for batch_index, sampled_batch in enumerate(loader):
                 print("Epoch %d, Iteration %d: sampling images.. " % (epoch, batch_index))
                 images = sampled_batch['image']
                 labels = torch.squeeze(sampled_batch['image_anno'])
@@ -250,13 +266,31 @@ if __name__ == '__main__':
     model.eval()
     correct = 0
     total = 0
+    intersection = 0
+    union = 0
     with torch.no_grad():
-        for data in test_loader:
-            images, labels = data
+        for batch_index, sampled_batch in enumerate(test_loader):
+            images = sampled_batch['image']
+            labels = torch.squeeze(sampled_batch['image_anno'])
             outputs = model(images)
             _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
+            total += labels.size(0) * labels.size(1) * labels.size(2)
             correct += (predicted == labels).sum().item()
 
-    print('Accuracy of the network on the 10000 test images: %d %%' % (
-        100 * correct / total))
+            intersection += (predicted * labels).sum()
+            union += predicted.sum() + labels.sum()
+            if batch_index == 2:
+                plt.figure()
+                imshow(images[0], predicted[0], labels[0])
+                plt.axis('off')
+                plt.ioff()
+                plt.show()
+
+
+
+    test_acc = 100.0 * correct / total
+    test_dice = 2.0*intersection / union
+    print('intersection: %f ' % (intersection))
+    print('intersection: %f ' % (union))
+    print('Accuracy of the network on the test images: %f %%' % (test_acc))
+    print('Dice of the network on the test images: %f' % (test_dice))
