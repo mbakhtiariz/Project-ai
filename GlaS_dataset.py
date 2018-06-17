@@ -5,14 +5,13 @@
 # Version: v0.1
 
 from __future__ import print_function, division
-import os
-import torch
-import pandas as pd
-from skimage import io, transform
-import numpy as np
+
 import matplotlib.pyplot as plt
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
+import numpy as np
+import pandas as pd
+from skimage import io
+from torch.utils.data import Dataset
+from torchvision.transforms import functional
 
 # My configuration/path
 data_path = "data\\GlaS\\"
@@ -48,7 +47,7 @@ class GlaSDataset(Dataset):
 
         # Remove all rows not containing the given desired_dataset, allowing to split 'test' and 'train'
         if desired_dataset:
-            self.framework = self.framework[self.framework['name'].str.contains(desired_dataset) == True]
+            self.framework = self.framework[self.framework['name'].str.contains(desired_dataset)]
 
         self.root_dir = root_dir
         self.transform = transform
@@ -59,8 +58,8 @@ class GlaSDataset(Dataset):
 
     def __getitem__(self, index):
         """Sample format:
-            image: image containing the to segment/grade cells
-            image_anno: image containing the segmented cells
+            image (torch.Tensor): image containing the to segment/grade cells
+            image_anno (torch.Tensor): image containing the segmented cells
             patient_id: id of the patient the cell originated from
             GlaS: assigned GlaS grade (target #1)
             grade: assigned (Sirinukunwattana et al. 2015) grade (target #2)
@@ -68,51 +67,54 @@ class GlaSDataset(Dataset):
 
         image_name = self.root_dir + self.framework.iloc[index, 0]
         image = io.imread(image_name + self.image_ext)
-        image = transforms.functional.to_pil_image(image)
         image_anno = io.imread(image_name + self.annotation_label + self.image_ext)
-
-        # PIL-image must be HxWxC, thus must have 3 dimensions
-        if len(image_anno.shape) == 2:
-            image_anno = np.expand_dims(image_anno, axis=2)
-        image_anno = transforms.functional.to_pil_image(image_anno)
 
         # Currently unused, but future-proofing
         patient_id = self.framework.iloc[index, 1]
-
         GlaS = self.framework.iloc[index, 2]
         grade = self.framework.iloc[index, 3]
 
-        sample = {'image': image, 'image_anno': image_anno, 'patient_id': patient_id, 'GlaS': GlaS, 'grade': grade}
-
         # For future-proofing (This will be the supplied pre-processing/data augmentation)
         if self.transform:
-            sample['image'] = self.transform(sample['image'])
+            image = self.transform(functional.to_pil_image(image))
 
         if self.transform_anno:
-            sample['image_anno'] = self.transform_anno(sample['image_anno'])
+            # PIL-image must be HxWxC, thus must have 3 dimensions
+            if len(image_anno.shape) == 2:
+                image_anno = np.expand_dims(image_anno, axis=2)
+            image_anno = self.transform_anno(functional.to_pil_image(image_anno))
 
-        return sample
+        return {'image': image, 'image_anno': image_anno, 'patient_id': patient_id, 'GlaS': GlaS, 'grade': grade}
 
 
-## Example for the proof-of-concept:
-## 		Draws the first 4 images and their segmentations
-##		Including their GlaS grade and (Sirinukunwattana et al. 2015) grade
+# Example for the proof-of-concept:
+#   Draws the first 4 images and their segmentation
+#   Including their GlaS grade and (Sirinukunwattana et al. 2015) grade
 if __name__ == '__main__':
 
     # load dataset
-    fig = plt.figure()
     dataset = GlaSDataset(desired_dataset='test')
+
+    fig = plt.figure()
 
     for i in range(len(dataset)):
         # load a sample
         sample = dataset[i]
 
-        print(
-            "Index #{}:\n\tPatient id:\t\t{}\n\tImage size:\t\t{}\n\tAnnotated image size:\t{}\n\tGlaS grade:\t\t{}\n\tOther grade:\t\t{}"
-                .format(i, sample['patient_id'], sample['image'].shape, sample['image_anno'].shape, sample['GlaS'],
-                        sample['grade']))
+        print("Index #{}:\n\t"
+              "Patient id:\t\t{}\n\t"
+              "Image size:\t\t{}\n\t"
+              "Annotated image size:\t{}\n\t"
+              "GlaS grade:\t\t{}\n\t"
+              "Other grade:\t\t{}"
+              .format(i,
+                      sample['patient_id'],
+                      sample['image'].shape,
+                      sample['image_anno'].shape,
+                      sample['GlaS'],
+                      sample['grade']))
 
-        ##plots: start
+        # plots: start
         ax = plt.subplot(2, 4, i + 1)
         plt.tight_layout()
         ax.axis('off')
@@ -123,7 +125,7 @@ if __name__ == '__main__':
         plt.tight_layout()
         ax.axis('off')
         plt.imshow(sample['image_anno'])
-        ##plots: end
+        # plots: end
 
         # we only show 3, proof-of-concept
         if i == 3:

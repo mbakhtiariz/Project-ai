@@ -5,50 +5,25 @@
 # Version: v1.1
 
 from __future__ import print_function, division
-import os
 
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torchvision
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils, datasets
-
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from skimage import io, transform
+from torch.utils.data import DataLoader
+from torchvision import transforms
 
 from GlaS_dataset import GlaSDataset
+from data_augmentation.binarize import BinarizeExample
+from data_augmentation.elastic_deformation import ElasticDeformation
 from data_augmentation.flip import Flip
 from data_augmentation.gaussian_blur import GaussianBlur
-
 from data_augmentation.rotation import Rotation
 
 
-# Example of a transformation that can be executed on the sample image
-
-
-class BinarizeExample(object):
-    """
-        Binarize the image given a certain threshold
-
-    Args:
-        threshold (float or int): Desired threshold to binarize the image with
-
-    """
-
-    def __init__(self, threshold=128):
-        self.threshold = threshold
-
-    def __call__(self, img):
-        img = img > self.threshold
-        img = img.float()
-
-        return img
-
-
-def imshow(input, title=None):
-    images_batch = input['image']
-    anno_images_batch = input['image_anno']
+def imshow(sample, title=None):
+    images_batch = sample['image']
+    anno_images_batch = sample['image_anno']
 
     print('images_batch.shape: ', images_batch.shape)
 
@@ -70,12 +45,12 @@ def imshow(input, title=None):
     plt.title('Target segmentations')
 
 
-## Example for the proof-of-concept:
-## 		Draws the first 4 images and their segmentations
-##		Including their GlaS grade and (Sirinukunwattana et al. 2015) grade
+# Example for the proof-of-concept:
+#   Draws the first 4 images and their segmentation
+#   Including their GlaS grade and (Sirinukunwattana et al. 2015) grade
 if __name__ == '__main__':
 
-    # For reproducable results
+    # For reproducible results
     seed = 42
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -85,9 +60,10 @@ if __name__ == '__main__':
 
     # This how you sequence/compose transformations
     data_transform = transforms.Compose([transforms.Resize((572, 572)),
-                                         Rotation(angle=270),
-                                         Flip(vertical=False),
-                                         GaussianBlur(2),
+                                         Rotation(angle=180),
+                                         Flip(vertical=True),
+                                         GaussianBlur(sigma=1.5),
+                                         ElasticDeformation(grid_size=3, displacement=10),
                                          transforms.ToTensor()])
 
     # This is how you add onto an existing sequence/composition
@@ -124,8 +100,12 @@ if __name__ == '__main__':
               "Annotated image size:\t{}\n\t"
               "GlaS grade:\t\t{}\n\t"
               "Other grade:\t\t{}"
-              .format(batch_i, sampled_batch['patient_id'], sampled_batch['image'].shape,
-                      sampled_batch['image_anno'].shape, sampled_batch['GlaS'], sampled_batch['grade']))
+              .format(batch_i,
+                      sampled_batch['patient_id'],
+                      sampled_batch['image'].shape,
+                      sampled_batch['image_anno'].shape,
+                      sampled_batch['GlaS'],
+                      sampled_batch['grade']))
 
         # Observe the 3rd batch
         if batch_i == 2:
@@ -134,6 +114,4 @@ if __name__ == '__main__':
             plt.axis('off')
             plt.ioff()
             plt.show()
-            ##plots: end
-
             break
