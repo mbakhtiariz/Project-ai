@@ -123,7 +123,6 @@ if __name__ == '__main__':
         # Observe the 3rd batch
         if batch_i == 2:
             plt.figure()
-            ceseintampla = sampled_batch['image_anno']
             imshow(sampled_batch)
             plt.axis('off')
             plt.ioff()
