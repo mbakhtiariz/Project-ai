@@ -91,24 +91,17 @@ class GlaSDataset(Dataset):
             # PIL-image must be HxWxC, thus must have 3 dimensions
             if len(sample['image_anno'].shape) == 2:
                 sample['image_anno'] = np.expand_dims(sample['image_anno'], axis=2)
-            [h, w, c] = sample['image'].shape
             sample['image'] = transforms.functional.to_pil_image(sample['image'])
-            # !!
-            #print("------------------", w, h)
-            instantiated_transform = self.transform(w, h)
-            sample['image'] = instantiated_transform(sample['image'])
-        # No need ...
+            sample['image'] = self.transform(sample['image'])
+
         if self.transform_anno:
             # PIL-image must be HxWxC, thus must have 3 dimensions
 
             if len(sample['image_anno'].shape) == 2:
                 sample['image_anno'] = np.expand_dims(sample['image_anno'], axis=2)
-            [h, w, c] = sample['image_anno'].shape
-            #print("------------------", w, h)
             sample['image_anno'] = transforms.functional.to_pil_image(sample['image_anno'])
-            #!!
-            instantiated_transform = self.transform_anno(w, h)
-            sample['image_anno'] = instantiated_transform(sample['image_anno'])
+
+            sample['image_anno'] = self.transform_anno(sample['image_anno'])
 
         return sample
 

@@ -1,8 +1,4 @@
-# Transforms:
-#   label: binarize, padding to desired size, one-hot-encoding
-
-#   Image: padding to desired size
-
+# Training for both segmentation and classification
 
 from __future__ import print_function, division
 import numpy as np
@@ -22,7 +18,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from hyperparam import load_hyperparams
 from masUNet_2headed import UNet
 from losses import Jaccard_loss
-from GlaS_dataset import GlaSDataset
+from new_GlaS_dataset import GlaSDataset
 
 
 # Example of a transformation that can be executed on the sample image
@@ -40,7 +36,7 @@ class Binarize(object):
 
     def __call__(self, img):
         img = img > self.threshold
-        return img.long()
+        return img.float()
 
 
 def compute_padding(w, h, target_w, target_h):
@@ -148,11 +144,18 @@ if __name__ == '__main__':
     tolerance = hyper_params["tolerance"]
     #-------------------------------------------
 
+    #------------- prob of each inner transformation ----------------
+    flip_prob = hyper_params["flip_prob"]
+    rotate_prob = hyper_params["rotate_prob"]
+    elastic_deform_prob = hyper_params["elastic_deform_prob"]
+    blur_prob = hyper_params["blur_prob"]
+    jitter_prob = hyper_params["jitter_prob"]
+
+
     # We want to resize all input images to the same size and naturally have to change size of masks as well.
     # Depth of network is an hyper param and can be changed so for achieving this we calculate the new size based on depth of network
-    img_new_w, img_new_h, mask_new_w, mask_new_h = find_image_mask_new_size(hyper_params)
+    img_new_w, img_new_h, mask_new_w, mask_new_h = find_image_mask_new_size(hyper_params) # for depth 3: 816, 564 / 776, 524
 
-    # for depth 3: 816, 564 / 776, 524
 
     # This how you sequence/compose transformations
     data_transform = lambda w, h: \
@@ -168,12 +171,16 @@ if __name__ == '__main__':
     # Load train dataset
     GlaS_train_dataset = GlaSDataset(transform=data_transform,
                                      transform_anno=anno_transform,
-                                     desired_dataset='train')
+                                     desired_dataset='train',
+                                     flip_prob = flip_prob, rotate_prob = rotate_prob,
+                                     elastic_deform_prob = elastic_deform_prob, blur_prob = blur_prob)
 
     # load valid dataset
     GlaS_valid_dataset = GlaSDataset(transform=data_transform,
                                      transform_anno=anno_transform,
-                                     desired_dataset='train')
+                                     desired_dataset='train',
+                                     flip_prob=flip_prob, rotate_prob=rotate_prob,
+                                     elastic_deform_prob=elastic_deform_prob, blur_prob=blur_prob)
 
     # Load test dataset
     GlaS_test_dataset = GlaSDataset(transform=data_transform,
@@ -222,7 +229,7 @@ if __name__ == '__main__':
     print("Length of test loader: ", len(test_loader))
 
     # Build Network:
-    net = UNet(hyper_params)#.to(device)
+    net = UNet(hyper_params).to(device)
 
 
     # ---------- Define loss criterion -------------
@@ -256,14 +263,14 @@ if __name__ == '__main__':
             avg_loss = []
             for batch_index, sampled_batch in enumerate(loader):
                 print("Epoch %d, Iteration %d: sampling images.. " % (epoch, batch_index))
-                images = sampled_batch['image']
-                seg_labels = torch.squeeze(sampled_batch['image_anno'])
-                cls_labels = sampled_batch['GlaS']
+                images = sampled_batch['image'].to(device)
+                seg_labels = torch.squeeze(sampled_batch['image_anno'],dim = 1).to(device).long()
+                cls_labels = sampled_batch['GlaS'].to(device)
 
 
                 print("*******", images.size())
-                if images.size()[0] == 1:
-                    continue
+                #if images.size()[0] == 1:
+                #    continue
                 print("Iteration %d: computing forward pass.." % batch_index)
                 # Forward pass
                 seg_out, cls_out = net(images)
@@ -303,7 +310,7 @@ if __name__ == '__main__':
 
     #---------------------EVAL ----------------------
     # have to change this later to read from best_hyper_param file
-    model = UNet(hyper_params)
+    model = UNet(hyper_params).to(device)
     model.load_state_dict(torch.load('best_model.pth'))
     model.eval()
     seg_correct = seg_total = seg_intersection = seg_union = 0.
@@ -311,9 +318,9 @@ if __name__ == '__main__':
     draw_flag = False
     with torch.no_grad():
         for batch_index, sampled_batch in enumerate(test_loader):
-            images = sampled_batch['image']
-            seg_labels = torch.squeeze(sampled_batch['image_anno'])
-            cls_labels = sampled_batch['GlaS']
+            images = sampled_batch['image'].to(device)
+            seg_labels = torch.squeeze(sampled_batch['image_anno']).to(device)
+            cls_labels = sampled_batch['GlaS'].to(device)
             seg_out, cls_out = model(images)
             _, seg_pred = torch.max(seg_out.data, 1)
             _, cls_pred = torch.max(cls_out.data, 1)

@@ -20,7 +20,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import scipy.ndimage
 
-from GlaS_dataset import GlaSDataset
+from new_GlaS_dataset import GlaSDataset
 from masUNet import UNet
 
 #.........................................

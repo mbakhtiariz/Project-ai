@@ -9,14 +9,18 @@ def load_hyperparams(param_path):
                 "lambda2", "batchSize", "doBatchNorm", "channels",
                 "dropout", "depth", "valid_size", "shuffle",
                 "pin_memory", "num_workers", "tolerance","cls_alpha",
-                "img_w", "img_h", "mask_w", "mask_h"]
+                "img_w", "img_h", "mask_w", "mask_h",
+                "flip_prob", "rotate_prob", "elastic_deform_prob", "blur_prob",
+                "jitter_prob"]
 
 
     types = ["string", "int", "float", "int",
              "float", "int", "int", "int",
              "float", "int","float", "string",
              "string", "int", "float","float",
-             "int", "int", "int", "int"]
+             "int", "int", "int", "int",
+             "float", "float", "float", "float",
+             "float"]
 
 
     key_type = {}

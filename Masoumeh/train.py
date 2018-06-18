@@ -21,7 +21,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from hyperparam import load_hyperparams
 from masUNet import UNet
 from losses import Jaccard_loss
-from GlaS_dataset import GlaSDataset
+from new_GlaS_dataset import GlaSDataset
 
 
 # Example of a transformation that can be executed on the sample image
@@ -147,11 +147,19 @@ if __name__ == '__main__':
     tolerance = hyper_params["tolerance"]
     #-------------------------------------------
 
+    #------------- prob of each inner transformation ----------------
+    flip_prob = hyper_params["flip_prob"]
+    rotate_prob = hyper_params["rotate_prob"]
+    elastic_deform_prob = hyper_params["elastic_deform_prob"]
+    blur_prob = hyper_params["blur_prob"]
+    jitter_prob = hyper_params["jitter_prob"]
+
+
+
+
     # We want to resize all input images to the same size and naturally have to change size of masks as well.
     # Depth of network is an hyper param and can be changed so for achieving this we calculate the new size based on depth of network
-    img_new_w, img_new_h, mask_new_w, mask_new_h = find_image_mask_new_size(hyper_params)
-
-    # for depth 3: 816, 564 / 776, 524
+    img_new_w, img_new_h, mask_new_w, mask_new_h = find_image_mask_new_size(hyper_params) # for depth 3: 816, 564 / 776, 524
 
 
     # This how you sequence/compose transformations
@@ -168,12 +176,16 @@ if __name__ == '__main__':
     # Load train dataset
     GlaS_train_dataset = GlaSDataset(transform=data_transform,
                                      transform_anno=anno_transform,
-                                     desired_dataset='train')
+                                     desired_dataset='train',
+                                     flip_prob = flip_prob, rotate_prob = rotate_prob,
+                                     elastic_deform_prob = elastic_deform_prob, blur_prob = blur_prob)
 
     # load valid dataset
     GlaS_valid_dataset = GlaSDataset(transform=data_transform,
                                      transform_anno=anno_transform,
-                                     desired_dataset='train')
+                                     desired_dataset='train',
+                                     flip_prob=flip_prob, rotate_prob=rotate_prob,
+                                     elastic_deform_prob=elastic_deform_prob, blur_prob=blur_prob)
 
     # Load test dataset
     GlaS_test_dataset = GlaSDataset(transform=data_transform,
@@ -222,7 +234,7 @@ if __name__ == '__main__':
     print("Length of test loader: ", len(test_loader))
 
     # Build Network:
-    net = UNet(hyper_params)#.to(device)
+    net = UNet(hyper_params).to(device)
 
     if (hyper_params['loss'] == "jaccard"):
         criterion = Jaccard_loss()
@@ -252,8 +264,8 @@ if __name__ == '__main__':
             avg_loss = []
             for batch_index, sampled_batch in enumerate(loader):
                 print("Epoch %d, Iteration %d: sampling images.. " % (epoch, batch_index))
-                images = sampled_batch['image']
-                labels = torch.squeeze(sampled_batch['image_anno'])
+                images = sampled_batch['image'].to(device)
+                labels = torch.squeeze(sampled_batch['image_anno']).to(device)
                 print("*******", images.size())
                 if images.size()[0] == 1:
                     continue
@@ -292,7 +304,7 @@ if __name__ == '__main__':
 
     #---------------------EVAL ----------------------
     # have to change this later to read from best_hyper_param file
-    model = UNet(hyper_params)
+    model = UNet(hyper_params).to(device)
     model.load_state_dict(torch.load('best_model.pth'))
     model.eval()
     correct = 0
@@ -302,8 +314,8 @@ if __name__ == '__main__':
     draw_flag = False
     with torch.no_grad():
         for batch_index, sampled_batch in enumerate(test_loader):
-            images = sampled_batch['image']
-            labels = torch.squeeze(sampled_batch['image_anno'])
+            images = sampled_batch['image'].to(device)
+            labels = torch.squeeze(sampled_batch['image_anno']).to(device)
             outputs = model(images)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0) * labels.size(1) * labels.size(2)
