@@ -1,7 +1,7 @@
 from PIL import Image
+import numpy as np
 
-
-class BinarizeExample(object):
+class Binarize(object):
     """
         Binarize the image given a certain threshold
 
@@ -11,10 +11,10 @@ class BinarizeExample(object):
     """
 
     def __init__(self, threshold: (int, float) = 128) -> None:
-        self.threshold = threshold
+        self._threshold = threshold
 
-    def __call__(self, img: Image) -> Image:
-        img = img > self.threshold
-        img = img.float()
+    def __call__(self, sample: tuple) -> tuple:
+        return sample[0], self.binarize(sample[1])
 
-        return img
+    def binarize(self, image: Image) -> Image:
+        return image.point(lambda x: 0 if x < self._threshold else 255)

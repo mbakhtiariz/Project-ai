@@ -1,4 +1,5 @@
-from PIL import Image
+import random
+from PIL.Image import Image
 
 
 class Rotation(object):
@@ -9,12 +10,20 @@ class Rotation(object):
         angle (int): Angle of image rotation. Should be one of these: [0, 90, 180, 270]
     """
 
-    def __init__(self, angle: int = 0) -> None:
-        if angle not in [0, 90, 180, 270]:
-            raise ValueError(
-                "Angle should be one of [0, 90, 180, 270], but instead angle=" + str(angle) + " was given.")
-        else:
-            self._angle = angle
+    def __init__(self, angles: (tuple, list) = (0, 90, 180, 270)) -> None:
+        for angle in angles:
+            if angle not in (0, 90, 180, 270):
+                raise ValueError(
+                    "Angle should be one of [0, 90, 180, 270], but instead angle=" + str(angle) + " was given.")
+        self._angles = angles
 
-    def __call__(self, image: Image) -> Image:
-        return image.rotate(self._angle)
+    def __call__(self, sample: tuple) -> tuple:
+        return self.rotate(sample[0], sample[1])
+
+    def rotate(self, image: Image, mask: Image) -> tuple:
+        assert isinstance(image, Image) and isinstance(mask, Image)
+        angle = random.choices(self._angles)
+        if isinstance(angle, list):
+            angle = angle[0]
+
+        return image.rotate(angle, expand=1), mask.rotate(angle, expand=1)

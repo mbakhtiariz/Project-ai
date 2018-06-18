@@ -14,11 +14,19 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from GlaS_dataset import GlaSDataset
-from data_augmentation.binarize import BinarizeExample
+from data_augmentation.HEStain import RandomHEStain
+from data_augmentation.binarize import Binarize
 from data_augmentation.elastic_deformation import ElasticDeformation
 from data_augmentation.flip import Flip
 from data_augmentation.gaussian_blur import GaussianBlur
+from data_augmentation.normalise import Normalise
+from data_augmentation.normalise_rgb import NormaliseRGB
+from data_augmentation.pil_image import ToPILImage
+from data_augmentation.random_gaussian_blur import RandomGaussianNoise
+from data_augmentation.resize import Resize
 from data_augmentation.rotation import Rotation
+from data_augmentation.tensor import ToTensor
+from data_augmentation.transpose_and_sqeeze import TransposeAndSqueeze
 
 
 def imshow(sample, title=None):
@@ -26,12 +34,16 @@ def imshow(sample, title=None):
     anno_images_batch = sample['image_anno']
 
     print('images_batch.shape: ', images_batch.shape)
+    print('images_anno_batch.shape: ', anno_images_batch.shape)
 
     grid = torchvision.utils.make_grid(images_batch, nrow=batch_size)
     grid2 = torchvision.utils.make_grid(anno_images_batch, nrow=batch_size)
 
     print('grid.shape: ', grid.shape)
     print('grid T . shape: ', grid.numpy().transpose((1, 2, 0)).shape)
+
+    print('grid2.shape: ', grid2.shape)
+    print('grid2 T . shape: ', grid2.numpy().transpose((1, 2, 0)).shape)
 
     # plot image and image_anno
     ax = plt.subplot(2, 1, 1)
@@ -59,26 +71,27 @@ if __name__ == '__main__':
     batch_size = 4
 
     # This how you sequence/compose transformations
-    data_transform = transforms.Compose([transforms.Resize((572, 572)),
-                                         Rotation(angle=180),
-                                         Flip(vertical=True),
-                                         GaussianBlur(sigma=1.5),
-                                         ElasticDeformation(grid_size=3, displacement=10),
-                                         transforms.ToTensor()])
-
-    # This is how you add onto an existing sequence/composition
-    anno_transform = transforms.Compose([data_transform,
-                                         BinarizeExample(threshold=0.000001)])
+    transformations = transforms.Compose([
+        ToPILImage(),
+        Resize((572, 572)),
+        Rotation(),
+        Flip(),
+        ElasticDeformation(displacement=20),
+        # GaussianBlur(sigma=[0.5, 0.7, 1, 1.3, 1.5, 1.7]),
+        RandomGaussianNoise(),
+        RandomHEStain(),
+        NormaliseRGB(),
+        Binarize(threshold=0.00001),
+        ToTensor(),
+        # Normalise(),
+        # TransposeAndSqueeze()
+    ])
 
     # load train dataset
-    GlaS_train_dataset = GlaSDataset(transform=data_transform,
-                                     transform_anno=anno_transform,
-                                     desired_dataset='train')
+    GlaS_train_dataset = GlaSDataset(transform=transformations, desired_dataset='train')
 
     # load test dataset (unused)
-    GlaS_test_dataset = GlaSDataset(transform=data_transform,
-                                    transform_anno=anno_transform,
-                                    desired_dataset='test')
+    GlaS_test_dataset = GlaSDataset(transform=transformations, desired_dataset='test')
 
     # create data_loader
     train_loader = DataLoader(GlaS_train_dataset,
@@ -110,6 +123,7 @@ if __name__ == '__main__':
         # Observe the 3rd batch
         if batch_i == 2:
             plt.figure()
+            ceseintampla = sampled_batch['image_anno']
             imshow(sampled_batch)
             plt.axis('off')
             plt.ioff()

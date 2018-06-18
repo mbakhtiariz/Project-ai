@@ -7,13 +7,26 @@
 from __future__ import print_function, division
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 from skimage import io
 from torch.utils.data import Dataset
-from torchvision.transforms import functional
+from torchvision.transforms import transforms
 
 # My configuration/path
+from data_augmentation.HEStain import RandomHEStain
+from data_augmentation.binarize import Binarize
+from data_augmentation.elastic_deformation import ElasticDeformation
+from data_augmentation.flip import Flip
+from data_augmentation.gaussian_blur import GaussianBlur
+from data_augmentation.normalise import Normalise
+from data_augmentation.normalise_rgb import NormaliseRGB
+from data_augmentation.pil_image import ToPILImage
+from data_augmentation.random_gaussian_blur import RandomGaussianNoise
+from data_augmentation.resize import Resize
+from data_augmentation.rotation import Rotation
+from data_augmentation.tensor import ToTensor
+from data_augmentation.transpose_and_sqeeze import TransposeAndSqueeze
+
 data_path = "data\\GlaS\\"
 grade_file = "Grade.csv"
 
@@ -21,14 +34,13 @@ grade_file = "Grade.csv"
 class GlaSDataset(Dataset):
     """ GlaS Dataset  """
 
-    def __init__(self, csv_file=data_path + grade_file, root_dir=data_path, transform=None, transform_anno=None,
+    def __init__(self, csv_file=data_path + grade_file, root_dir=data_path, transform=lambda x: x,
                  desired_dataset=None):
         """
         Arguments:
             csv_file: path to the grade csv-file
             root_dir: path to the map containing the images
-            transform: (optional) transformation to be applied on sample['image']
-            transform_anno: (optional) transformation to be applied on the sample['image_anno']
+            transform: (optional) transformation to be applied on sample['image'] and sample['image_anno']
             desired_dataset: (optional) rows where the name does not contains this keyword will be deleted
                     this allows you to split the dataset into 'train' and 'test'
         """
@@ -51,7 +63,6 @@ class GlaSDataset(Dataset):
 
         self.root_dir = root_dir
         self.transform = transform
-        self.transform_anno = transform_anno
 
     def __len__(self):
         return len(self.framework)
@@ -74,15 +85,7 @@ class GlaSDataset(Dataset):
         GlaS = self.framework.iloc[index, 2]
         grade = self.framework.iloc[index, 3]
 
-        # For future-proofing (This will be the supplied pre-processing/data augmentation)
-        if self.transform:
-            image = self.transform(functional.to_pil_image(image))
-
-        if self.transform_anno:
-            # PIL-image must be HxWxC, thus must have 3 dimensions
-            if len(image_anno.shape) == 2:
-                image_anno = np.expand_dims(image_anno, axis=2)
-            image_anno = self.transform_anno(functional.to_pil_image(image_anno))
+        image, image_anno = self.transform((image, image_anno))
 
         return {'image': image, 'image_anno': image_anno, 'patient_id': patient_id, 'GlaS': GlaS, 'grade': grade}
 
@@ -92,8 +95,24 @@ class GlaSDataset(Dataset):
 #   Including their GlaS grade and (Sirinukunwattana et al. 2015) grade
 if __name__ == '__main__':
 
+    transformations = transforms.Compose([
+        ToPILImage(),
+        Resize((572, 572)),
+        Rotation(),
+        Flip(),
+        ElasticDeformation(displacement=20),
+        # GaussianBlur(sigma=[0.5, 0.7, 1, 1.3, 1.5, 1.7]),
+        RandomGaussianNoise(),
+        RandomHEStain(),
+        NormaliseRGB(),
+        Binarize(threshold=0.00001),
+        ToTensor(),
+        # Normalise(),
+        TransposeAndSqueeze()
+    ])
+
     # load dataset
-    dataset = GlaSDataset(desired_dataset='test')
+    dataset = GlaSDataset(desired_dataset='test', transform=transformations)
 
     fig = plt.figure()
 
@@ -127,7 +146,7 @@ if __name__ == '__main__':
         plt.imshow(sample['image_anno'])
         # plots: end
 
-        # we only show 3, proof-of-concept
+        # we only show batch 3, proof-of-concept
         if i == 3:
             plt.show()
             break
