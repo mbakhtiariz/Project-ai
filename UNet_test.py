@@ -12,6 +12,13 @@ from GlaS_dataset import GlaSDataset
 
 import matplotlib.pyplot as plt
 import time
+import random
+
+#from https://github.com/pytorch/pytorch/issues/751
+def stable_bce_loss(input, target):
+	neg_abs = - input.abs()
+	loss = input.clamp(min=0) - input * target + (1 + neg_abs.exp()).log()
+	return loss.mean()
 
 def prep_img(img):
 	#PIL-image must be HxWxC, thus must have 3 dimensions
@@ -26,52 +33,69 @@ def train(model, device, train_loader, optimizer, epoch, log_interval=10):
 	model.train()
 	for batch_i, sample in enumerate(train_loader):
 		data, target = sample['image'], sample['image_anno']
-		data, target = prep_img(data), prep_img(target)
 		
-		#Data augmentation index
-		i = 0
-		for augment in data_augmentation:
-			if augment:
-				augmented_data, augmented_target = augment(data), augment(target)
-			else:
-				augmented_data, augmented_target = data, target
+		augment = random.choice(data_augmentation)
+		if augment:
+			data, target = augment(prep_img(data)), augment(prep_img(target))
+			data, target = transforms.ToTensor()(data), transforms.ToTensor()(target)
+			data, target = torch.unsqueeze(data, 0), torch.unsqueeze(target, 0)
 
-			augmented_data, augmented_target = transforms.ToTensor()(augmented_data), transforms.ToTensor()(augmented_target)
-			augmented_data, augmented_target = torch.unsqueeze(augmented_data, 0), torch.unsqueeze(augmented_target, 0)
-			augmented_data, augmented_target = augmented_data.to(device), augmented_target.to(device)
-
-			optimizer.zero_grad()
-			output = model(augmented_data)
+		#target = torch.squeeze(target, dim=0)
+		data, target = data.to(device), target.to(device)		
 		
-			#loss = F.cross_entropy(output, target)	#Needs LongTensor, given FloatTensor
-			#loss = F.l1_loss(output, target)		#Horribly high loss
-			#loss = F.nll_loss(output, target)		#Needs LongTensor, given FloatTensor
-			loss = F.binary_cross_entropy_with_logits(output, augmented_target)
-			loss.backward()
-			optimizer.step()
+		optimizer.zero_grad()
+		output = model(data)
+		
+		loss = F.mse_loss(output, target)
+		#loss = stable_bce_loss(output, target)
+		#loss = F.binary_cross_entropy(output, target)	#Needs LongTensor, given FloatTensor
+		#loss = F.l1_loss(output, target)		#Horribly high loss
+		#loss = F.nll_loss(torch.exp(output), target)		#Needs LongTensor, given FloatTensor
+		#loss = F.binary_cross_entropy_with_logits(output, target)
+		loss.backward()
+		optimizer.step()
+		
+		if batch_i % log_interval == 0:
+			print('Train epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+						epoch, batch_i*len(data), len(train_loader.dataset),
+						100. * batch_i / len(train_loader), loss.item()))
+						
+		if batch_i == 164:
+			post_transform = transforms.Compose([BinarizeExample(threshold=output.mean())])
+			thres = post_transform(output)
+			#hist_eq = torch.histc(output.to(torch.device("cpu")))
+			utils.save_image(data, "input_{}.bmp".format(epoch))
+			utils.save_image(target, "target_{}.bmp".format(epoch))
 			
-			if batch_i % log_interval == 0 and i == 0:
-				print('Train epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-							epoch, batch_i*len(augmented_data), len(train_loader.dataset),
-							100. * batch_i / len(train_loader), loss.item()))
-							
-			if batch_i == 164:
-				post_transform = transforms.Compose([BinarizeExample(threshold=output.mean())])
-				thres = post_transform(output)
-				#hist_eq = torch.histc(output.to(torch.device("cpu")))
-				utils.save_image(augmented_data, "input_{}_aug_{}.bmp".format(epoch, i))
-				utils.save_image(augmented_target, "target_{}_aug_{}.bmp".format(epoch, i))
-				
-				utils.save_image(output, "output_{}_aug_{}.bmp".format(epoch, i))
-				utils.save_image(thres, "thres_{}_aug_{}.bmp".format(epoch, i))
-				#utils.save_image(hist_eq, "hist_eq_{}.bmp".format(epoch))
+			utils.save_image(output, "output_{}.bmp".format(epoch))
+			utils.save_image(thres, "thres_{}.bmp".format(epoch))
 			
-			i+=1
+			# #Failed attempt at showing them as plots once every epoch...
+			# target = torch.squeeze(target)
+			# output = torch.squeeze(output)
+			# thres = torch.squeeze(thres)
+			
+			# ax = plt.subplot(1,3,1)
+			# plt.tight_layout()
+			# ax.axis('off')
+			# plt.imshow(target)
+			# ax = plt.subplot(1,3,2)
+			# plt.tight_layout()
+			# ax.axis('off')
+			# plt.imshow(output.detach())
+			# ax = plt.subplot(1,3,3)
+			# plt.tight_layout()
+			# ax.axis('off')
+			# plt.imshow(thres)
+			
+			# fig.canvas.draw()
+			
+			#utils.save_image(hist_eq, "hist_eq_{}.bmp".format(epoch))
 
 if __name__ == '__main__':
 
 	#For reproducable results
-	seed = 42
+	seed = 2011
 	np.random.seed(seed)
 	torch.manual_seed(seed)
 
@@ -96,12 +120,14 @@ if __name__ == '__main__':
 	#This how you sequence/compose transformations
 	data_transform = transforms.Compose([transforms.CenterCrop((572,572)),
 										transforms.Grayscale(),
-										transforms.ToTensor()])									
+										transforms.ToTensor(),
+										transforms.Normalize((0.5, 0.5, 0.5),(0.5, 0.5, 0.5))])									
 										
 	#This is how you add onto an existing sequence/composition									
 	anno_transform = transforms.Compose([transforms.CenterCrop((388,388)),
 										transforms.ToTensor(), 
-										BinarizeExample(threshold=0.000001)])
+										BinarizeExample(threshold=0.000001),
+										transforms.Normalize((0.5, 0.5, 0.5),(0.5, 0.5, 0.5))])
 	
 	#load train dataset
 	GlaS_train_dataset = GlaSDataset(transform=data_transform,
@@ -130,7 +156,7 @@ if __name__ == '__main__':
 	
 	#model = UNet(upsample_mode='transpose').to(device)
 	model = UNet(upsample_mode='bilinear').to(device)
-	optimizer = optim.Adam(model.parameters(), lr=0.001)
+	optimizer = optim.Adam(model.parameters(), lr=0.0001)
 	
 	print(' ==== Now running training for {} epochs ==== '.format(max_epochs))
 	start_time = time.time()

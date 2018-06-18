@@ -33,8 +33,10 @@ class BinarizeExample(object):
 		self.threshold = threshold
 		
 	def __call__(self, img):
+		img_type = img.type()
 		img = img > self.threshold
-		img = img.float()
+		#img = img.float()
+		img = img.type(img_type)
 		
 		return img
 
