@@ -1,9 +1,9 @@
-loss = cross_entropy
+loss = j
 filterNumStart = 2
 lr = 0.1
 epochs = 10
 lambda2 = 0.0001
-batchSize = 2
+batchSize = 4
 doBatchNorm = 0
 channels = 3
 dropout = 0.3
@@ -20,4 +20,4 @@ flip_prob= 0
 rotate_prob = 0
 elastic_deform_prob = 0
 blur_prob = 0
-jitter_prob = 1
+jitter_prob = 0

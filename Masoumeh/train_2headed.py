@@ -19,7 +19,8 @@ from hyperparam import load_hyperparams
 from masUNet_2headed import UNet
 from losses import Jaccard_loss
 from new_GlaS_dataset import GlaSDataset
-
+import matplotlib
+#matplotlib.use('GTKAgg')
 
 # Example of a transformation that can be executed on the sample image
 class Binarize(object):
@@ -45,7 +46,7 @@ def compute_padding(w, h, target_w, target_h):
     # print ("+++++++++", x_pad, y_pad)
     return (x_pad, y_pad, x_pad + (target_w - w) % 2, y_pad + (target_h - h) % 2)
 
-
+'''
 def imshow(original, predection, mask):
 
     images_batch = original
@@ -77,7 +78,7 @@ def imshow(original, predection, mask):
     ax.set_title('Input batch')
     plt.imshow(100*grid3.numpy().transpose((1, 2, 0)))
     plt.title('Pred')
-
+'''
 
 def early_stopping(avg_loss, tolerance):
 
@@ -233,12 +234,12 @@ if __name__ == '__main__':
 
 
     # ---------- Define loss criterion -------------
-    if (hyper_params['loss'] == "jaccard"):
+    if (hyper_params['loss'] == "j"):
         seg_criterion = Jaccard_loss()
     else:
-        seg_criterion = nn.CrossEntropyLoss()
+        seg_criterion = F.binary_cross_entropy_with_logits #nn.CrossEntropyLoss()
 
-    cls_criterion = nn.CrossEntropyLoss()
+    cls_criterion = F.binary_cross_entropy_with_logits #nn.CrossEntropyLoss()
 
 
     optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=lambda2)
@@ -263,23 +264,19 @@ if __name__ == '__main__':
             avg_loss = []
             for batch_index, sampled_batch in enumerate(loader):
                 print("Epoch %d, Iteration %d: sampling images.. " % (epoch, batch_index))
-                images = sampled_batch['image'].to(device)
-                seg_labels = torch.squeeze(sampled_batch['image_anno'],dim = 1).to(device).long()
-                cls_labels = sampled_batch['GlaS'].to(device)
+                images = Variable(sampled_batch['image'].to(device).float())
+                seg_labels = Variable(sampled_batch['image_anno'].to(device).float())
+                cls_labels = Variable(sampled_batch['GlaS'].to(device).float())
 
-
-                print("*******", images.size())
-                #if images.size()[0] == 1:
-                #    continue
                 print("Iteration %d: computing forward pass.." % batch_index)
                 # Forward pass
                 seg_out, cls_out = net(images)
-                print("Iteration %d: calculating loss..." % batch_index)
+                cls_out = torch.squeeze(cls_out, dim = 1).to(device)
 
                 cls_loss = cls_criterion(cls_out, cls_labels)
                 seg_loss = seg_criterion(seg_out, seg_labels)
-
                 loss = seg_loss + cls_alpha*cls_loss
+
                 print("Iteration %d: doing backward pass..." % batch_index)
                 # Backward and optimize
                 if phase == 'train':
@@ -288,26 +285,26 @@ if __name__ == '__main__':
                     print("Iteration %d: now updating...." % batch_index)
                     optimizer.step()
 
-
-                print("---------------------loss: %f", loss.item())
+                print("Batch Loss after optimizing: ", loss.item())
                 out.write(str(loss.item()) + "\n")
                 epoch_loss.append(loss.item())
 
-            avg_loss.append(np.mean(epoch_loss))
-            print("--------------------- average loss: %f", avg_loss[-1])
+            last_loss = np.mean(epoch_loss)
+            avg_loss.append(last_loss)
 
             if phase == 'val':
-                if avg_loss[-1] < minimum_loss:
-                    minimum_loss = avg_loss[-1]
+                if last_loss < minimum_loss:
+                    minimum_loss = last_loss
+                    print("Minimum Average Loss so far:", minimum_loss)
                     torch.save(net.state_dict(), 'best_model.pth')
                     # later probably save the file of best config including hyperparams.
-                    print("--------------------- min loss so far: %f", avg_loss[-1])
+
                 if early_stopping(avg_loss, tolerance):
                     finish = True
                     break
         if finish == True:
             break
-
+    '''
     #---------------------EVAL ----------------------
     # have to change this later to read from best_hyper_param file
     model = UNet(hyper_params).to(device)
@@ -318,12 +315,19 @@ if __name__ == '__main__':
     draw_flag = False
     with torch.no_grad():
         for batch_index, sampled_batch in enumerate(test_loader):
-            images = sampled_batch['image'].to(device)
-            seg_labels = torch.squeeze(sampled_batch['image_anno']).to(device)
-            cls_labels = sampled_batch['GlaS'].to(device)
+            images = Variable(sampled_batch['image'].to(device).float())
+            seg_labels = Variable(sampled_batch['image_anno'].to(device).float())
+            cls_labels = Variable(sampled_batch['GlaS'].to(device).float())
+
             seg_out, cls_out = model(images)
+
+            #cls_out = torch.squeeze(cls_out, dim=1)
+
             _, seg_pred = torch.max(seg_out.data, 1)
             _, cls_pred = torch.max(cls_out.data, 1)
+
+            #seg_pred = F.sigmoid(seg_pred)
+            #cls_pred = F.sigmoid(cls_pred)
 
             seg_total += seg_labels.size(0) * seg_labels.size(1) * seg_labels.size(2)
             seg_correct += (seg_pred == seg_labels).sum().item()
@@ -334,15 +338,16 @@ if __name__ == '__main__':
             seg_intersection += (seg_pred * seg_labels).sum()
             seg_union += seg_pred.sum() + seg_labels.sum()
 
-
+        
             if batch_index == 2:
                 draw_flag = True
                 plt.figure()
                 imshow(images[0], seg_pred[0], seg_labels[0])
                 plt.axis('off')
                 plt.ioff()
-
-
+                
+        
+            
 
     seg_acc_test = 100.0 * seg_correct / seg_total
     seg_dice_test = 2.0 * float(seg_intersection) / float(seg_union)
@@ -354,5 +359,8 @@ if __name__ == '__main__':
     print('Dice of the network on the test images:', seg_dice_test)
     print('classification Accuracy of the network on the test images: ', cls_acc_test)
 
+    
     if draw_flag:
         plt.show()
+   
+    '''

@@ -23,7 +23,8 @@ from hyperparam import load_hyperparams
 from masUNet_2headed import UNet
 from losses import Jaccard_loss
 from new_GlaS_dataset import GlaSDataset
-
+import matplotlib
+matplotlib.use('GTKAgg')
 
 # Example of a transformation that can be executed on the sample image
 class Binarize(object):
