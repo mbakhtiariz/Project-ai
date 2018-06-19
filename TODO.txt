@@ -1,0 +1,42 @@
+Data loader:
+Data augmentation:
+    Rotation, flip
+    Color
+    Blur
+    Crops
+    Elastic deformation
+    Split into train, val and test set/
+
+Model:
+    Unet-----------------------------------> eval()
+    FCN, If you want to compare
+    Loss:
+        BCE/
+        Jaccard/
+
+Training:
+    Adam/
+    Weight decay--------------------------> L2 reguralization: Train/
+    early stopping------------------------> stop if valid loss exceed after few times/
+    learning rate/
+    Metric: Loss + dice------------------->Test
+
+
+Save the best model after validation step/
+
+
+
+Change augmentation
+Save desired outputs in a folder:
+    augmentation:
+        new images and new annotation and new classifier
+    training
+        Model,
+        output images: 1.input image, 2. annotation 3. transformed image 4. transformed anno 5. segmented anno
+Make an automat sysyem to read hyperparameters
+
+Make evaluation:
+    load test data
+    load model
+    save acc, loss, dice
+    save images: 1.input image, 2. annotation 3. transformed image 4. transformed anno 5. segmented anno
