@@ -22,7 +22,8 @@ def load_hyperparams(param_path):
                 "img_w", "img_h", "mask_w", "mask_h",
                 "rotate_prob", "elastic_deform_prob", "blur_prob", "jitter_prob",
                 "HEStain_prob", "right_flip_prob", "left_flip_prob","HEStain_prob",
-                "norm_prob", "norm_rgb_prob", "gaus_blur_prob", "ext_rot_prob"]
+                "norm_prob", "norm_rgb_prob", "gaus_blur_prob", "ext_rot_prob",
+                "dataset_expansion_factor"]
 
 
 
@@ -34,7 +35,7 @@ def load_hyperparams(param_path):
              "float", "float", "float", "float",
              "float", "float", "float", "float",
              "float", "float", "float", "float",
-             "float", "float", "float", "float",]
+             "int"]
 
 
     key_type = {}

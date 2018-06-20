@@ -63,6 +63,7 @@ class GlaSDataset(Dataset):
             self.norm_prob = hyper_params['norm_prob']
             self.norm_rgb_prob = hyper_params['norm_rgb_prob']
         else:
+            self.dataset_expansion_factor = 5
             self.right_flip_prob =  self.left_flip_prob = \
                 self.rotate_prob = self.ext_rot_prob = self.elastic_deform_prob =\
                 self.blur_prob = self.gaus_blur_prob = self.jitter_prob = self.HEStain_prob\
