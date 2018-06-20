@@ -63,7 +63,7 @@ def train(model, device, train_loader, optimizer, epoch, log_interval=10):
                        100. * batch_i / len(train_loader), loss.item()))
 
         if batch_i == 164:
-            post_transform = transforms.Compose([BinarizeExample(threshold=output.mean())])
+            post_transform = transforms.Compose([Binarize(threshold=output.mean())])
             thres = post_transform(output)
             # hist_eq = torch.histc(output.to(torch.device("cpu")))
             utils.save_image(data, "input_{}.bmp".format(epoch))
