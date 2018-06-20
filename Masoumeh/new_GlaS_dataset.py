@@ -50,7 +50,8 @@ class GlaSDataset(Dataset):
         self.annotation_label = '_anno'
 
         if hyper_params:
-            self.right_flip_prob =  hyper_params['right_flip_prob']
+            self.dataset_expansion_factor = hyper_params['dataset_expansion_factor']
+            self.right_flip_prob = hyper_params['right_flip_prob']
             self.left_flip_prob = hyper_params['left_flip_prob']
             self.rotate_prob = hyper_params['rotate_prob']
             self.ext_rot_prob = hyper_params['ext_rot_prob']
@@ -85,7 +86,8 @@ class GlaSDataset(Dataset):
         self.transform_anno = transform_anno
 
     def __len__(self):
-        return len(self.framework)
+        # multiply by 5 so that we have 5 more data.
+        return self.dataset_expansion_factor * len(self.framework)
 
     def __getitem__(self, index):
         """Sample format:
@@ -95,6 +97,9 @@ class GlaSDataset(Dataset):
 			GlaS: assigned GlaS grade (target #1)
 			grade: assigned (Sirinukunwattana et al. 2015) grade (target #2)
 		"""
+
+        # we divide tby 5 so that we get the real index
+        index = index // self.dataset_expansion_factor
 
         image_name = self.root_dir + self.framework.iloc[index, 0]
         image = io.imread(image_name + self.image_ext)

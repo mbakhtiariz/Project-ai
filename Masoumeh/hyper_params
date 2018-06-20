@@ -28,3 +28,4 @@ norm_prob = 0
 norm_rgb_prob = 0
 gaus_blur_prob = 1
 ext_rot_prob = 0
+dataset_expansion_factor = 5
