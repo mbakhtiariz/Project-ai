@@ -20,8 +20,10 @@ def load_hyperparams(param_path):
                 "dropout", "depth", "valid_size", "shuffle",
                 "pin_memory", "num_workers", "tolerance","cls_alpha",
                 "img_w", "img_h", "mask_w", "mask_h",
-                "flip_prob", "rotate_prob", "elastic_deform_prob", "blur_prob",
-                "jitter_prob"]
+                "rotate_prob", "elastic_deform_prob", "blur_prob", "jitter_prob",
+                "HEStain_prob", "right_flip_prob", "left_flip_prob","HEStain_prob",
+                "norm_prob", "norm_rgb_prob", "gaus_blur_prob", "ext_rot_prob"]
+
 
 
     types = ["string", "int", "float", "int",
@@ -30,7 +32,9 @@ def load_hyperparams(param_path):
              "string", "int", "float","float",
              "int", "int", "int", "int",
              "float", "float", "float", "float",
-             "float"]
+             "float", "float", "float", "float",
+             "float", "float", "float", "float",
+             "float", "float", "float", "float",]
 
 
     key_type = {}
@@ -112,7 +116,11 @@ def find_image_mask_new_size(hyper_params):
     print(img_new_w, img_new_h, mask_new_w, mask_new_h)
     return img_new_w, img_new_h, mask_new_w, mask_new_h
 
-
+def find_cropping_size(bridge_x, depth):
+    # finds the input and mask new size based on given depth and given output
+    input_size = (2**(depth-1))*bridge_x + 4*(2**depth) - 4
+    output_size = 2**(depth-1)*bridge_x - 2**(depth+1) + 4
+    return input_size, output_size
 
 def prepare_data(hyper_params, device):
 
@@ -120,7 +128,6 @@ def prepare_data(hyper_params, device):
     seed = 42
     np.random.seed(seed)
     torch.manual_seed(seed)
-
 
     valid_size = hyper_params["valid_size"]
     shuffle = hyper_params["shuffle"]
@@ -133,13 +140,12 @@ def prepare_data(hyper_params, device):
         pin_memory = False  # hyper_params["pin_memory"]  # False: cpu, True:cuda
         num_workers = 0  # hyper_params["num_workers"]  # 0 if cpu 1 or more if cuda
 
-    # ------------- prob of each inner transformation ----------------
-    flip_prob = hyper_params["flip_prob"]
-    rotate_prob = hyper_params["rotate_prob"]
-    elastic_deform_prob = hyper_params["elastic_deform_prob"]
-    blur_prob = hyper_params["blur_prob"]
-    jitter_prob = hyper_params["jitter_prob"]
 
+
+    input_size, output_size = [572, 388]#find_cropping_size(300, hyper_params["depth"])
+
+    print(input_size)
+    print(output_size)
     # We want to resize all input images to the same size and naturally have to change size of masks as well.
     # Depth of network is an hyper param and can be changed so for achieving this we calculate the new size based on depth of network
     img_new_w, img_new_h, mask_new_w, mask_new_h = find_image_mask_new_size(
@@ -147,29 +153,31 @@ def prepare_data(hyper_params, device):
 
     # This how you sequence/compose transformations
     data_transform = lambda w, h: \
-        transforms.Compose([transforms.Pad(padding=compute_padding(w, h, img_new_w, img_new_h), padding_mode='reflect'),
-                            transforms.ToTensor()])
+        transforms.Compose([transforms.CenterCrop((input_size,input_size)),
+            #transforms.Pad(padding=compute_padding(w, h, img_new_w, img_new_h), padding_mode='reflect'),
+                            transforms.ToTensor(),
+                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
     # This is how you add onto an existing sequence/composition
     anno_transform = lambda w, h: \
         transforms.Compose(
-            [transforms.Pad(padding=compute_padding(w, h, mask_new_w, mask_new_h), padding_mode='reflect'),
+            [transforms.CenterCrop((output_size,output_size)),
+             #transforms.Pad(padding=compute_padding(w, h, mask_new_w, mask_new_h), padding_mode='reflect'),
              transforms.ToTensor(),
-             Binarize(threshold=0.001)])
+             Binarize(threshold=0.000001),
+             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
     # Load train dataset
     GlaS_train_dataset = GlaSDataset(transform=data_transform,
                                      transform_anno=anno_transform,
                                      desired_dataset='train',
-                                     flip_prob=flip_prob, rotate_prob=rotate_prob,
-                                     elastic_deform_prob=elastic_deform_prob, blur_prob=blur_prob)
+                                     hyper_params=hyper_params)
 
     # load valid dataset
     GlaS_valid_dataset = GlaSDataset(transform=data_transform,
                                      transform_anno=anno_transform,
                                      desired_dataset='train',
-                                     flip_prob=flip_prob, rotate_prob=rotate_prob,
-                                     elastic_deform_prob=elastic_deform_prob, blur_prob=blur_prob)
+                                     hyper_params=hyper_params)
 
     # Load test dataset
     GlaS_test_dataset = GlaSDataset(transform=data_transform,

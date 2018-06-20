@@ -5,24 +5,23 @@
 #
 # GlaS Dataset
 
-# few lines edited
 
 from __future__ import print_function, division
-import os
-import torch
 import pandas as pd
 from skimage import io, transform
-import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
-
-from torch.utils.data.sampler import SubsetRandomSampler
-from copy import copy
 import random
 from PIL import Image, ImageFilter
 import cv2
 from scipy.interpolate import griddata
+import numpy as np
+import skimage
+from numpy import random
+from PIL.Image import FLIP_TOP_BOTTOM, FLIP_LEFT_RIGHT
+
+
 ## My configuration/path
 
 data_path = '../data/Glas/'
@@ -35,7 +34,7 @@ class GlaSDataset(Dataset):
     """ GlaS Dataset  """
 
     def __init__(self, csv_file=data_path + grade_file, root_dir=data_path, transform=None, transform_anno=None,
-                 desired_dataset=None, flip_prob= 0, rotate_prob = 0, elastic_deform_prob = 0, blur_prob = 0, jitter_prob = 0):
+                 desired_dataset=None, hyper_params = None):
         """
 		Arguments:
 			csv_file: path to the grade csv-file
@@ -50,11 +49,24 @@ class GlaSDataset(Dataset):
         self.image_ext = '.bmp'
         self.annotation_label = '_anno'
 
-        self.flip_prob = flip_prob # TODO: add it to param files
-        self.rotate_prob = rotate_prob # TODO: add it to param files
-        self.elastic_deform_prob = elastic_deform_prob # TODO: add it to param files
-        self.blur_prob = blur_prob  # TODO: add it to param files
-        self.jitter_prob = jitter_prob # TODO: add it to param files
+        if hyper_params:
+            self.right_flip_prob =  hyper_params['right_flip_prob']
+            self.left_flip_prob = hyper_params['left_flip_prob']
+            self.rotate_prob = hyper_params['rotate_prob']
+            self.ext_rot_prob = hyper_params['ext_rot_prob']
+            self.elastic_deform_prob = hyper_params['elastic_deform_prob']
+            self.blur_prob = hyper_params['blur_prob']
+            self.gaus_blur_prob = hyper_params['gaus_blur_prob']
+            self.jitter_prob = hyper_params['jitter_prob']
+            self.HEStain_prob = hyper_params['HEStain_prob']
+            self.norm_prob = hyper_params['norm_prob']
+            self.norm_rgb_prob = hyper_params['norm_rgb_prob']
+        else:
+            self.right_flip_prob =  self.left_flip_prob = \
+                self.rotate_prob = self.ext_rot_prob = self.elastic_deform_prob =\
+                self.blur_prob = self.gaus_blur_prob = self.jitter_prob = self.HEStain_prob\
+                =  self.norm_prob = self.norm_rgb_prob = 0
+
 
         # Load csv-file into pandas
         self.framework = pd.read_csv(csv_file)
@@ -106,17 +118,35 @@ class GlaSDataset(Dataset):
                 sample['image_anno'] = np.expand_dims(sample['image_anno'], axis=2)
             [h, w, c] = sample['image_anno'].shape
 
+            sample['image'], sample['image_anno'] = self.RandomHEStain(sample['image'], sample['image_anno'])
+
+
             # transformations that are done on both image and labels go here...
-            sample['image'], sample['image_anno'] = self.flip_aug(sample['image'], sample['image_anno'])
+
 
             sample['image'] = transforms.functional.to_pil_image(sample['image'])
             sample['image_anno'] = transforms.functional.to_pil_image(sample['image_anno'])
 
             # transform just on original image, since it get PIL as input, I defined it here:
+            sample['image'], sample['image_anno'] = self.right_flip_aug(sample['image'], sample['image_anno'])
+            sample['image'], sample['image_anno'] = self.right_flip_aug(sample['image'], sample['image_anno'])
+
             sample['image'] = self.blur_aug(sample['image'])
             sample['image'] = self.color_jitter(sample['image'])
             sample['image'], sample['image_anno'] = self.rotate_aug(sample['image'], sample['image_anno'])
             sample['image'], sample['image_anno'] = self.elastic_deformation(sample['image'], sample['image_anno'])
+
+            sample['image'], sample['image_anno'] = self.extended_rotate(sample['image'], sample['image_anno'])
+            sample['image'], sample['image_anno'] = self.gaussian_blur(sample['image'], sample['image_anno'])
+
+            sample['image'], sample['image_anno'] = self.NormaliseRGB(sample['image'], sample['image_anno'])
+            sample['image'], sample['image_anno'] = self.normalise(sample['image'], sample['image_anno'])
+
+
+
+
+
+
 
             instantiated_transform = self.transform(w, h)
             sample['image'] = instantiated_transform(sample['image'])
@@ -129,16 +159,24 @@ class GlaSDataset(Dataset):
     #-------------- New helper func ------------------------
     # https://discuss.pytorch.org/t/torchvision-transfors-how-to-perform-identical-transform-on-both-image-and-target/10606
     # https://discuss.pytorch.org/t/torchvision-transfors-how-to-perform-identical-transform-on-both-image-and-target/10606/7
-    def flip_aug(self, image, label):
-        if random.random() < self.flip_prob:
-            return image[::-1, :, :], label[::-1, :, :]
+    def right_flip_aug(self, image, label):
+        if random.random() < self.right_flip_prob:
+            image.transpose(FLIP_LEFT_RIGHT), label.transpose(FLIP_LEFT_RIGHT)
+            #return image[::-1, :, :], label[::-1, :, :]
+        else:
+            return image, label
+
+    def left_flip_aug(self, image, label):
+        if random.random() < self.left_flip_prob:
+            image.transpose(FLIP_TOP_BOTTOM), label.transpose(FLIP_TOP_BOTTOM)
+            #return image[::-1, :, :], label[::-1, :, :]
         else:
             return image, label
 
     def rotate_aug(self, image, label):
         if random.random() > self.rotate_prob:
             return image, label
-        angle = random.choice([random.randint(-20,20),90,180,270])
+        angle = random.choice([random.randint(-5,5),90,180,270])
         return image.rotate(angle), label.rotate(angle)
 
     def elastic_deformation(self, image, label):
@@ -189,6 +227,121 @@ class GlaSDataset(Dataset):
             return transforms.ColorJitter(brightness, contrast)(image)
         else:
             return image
+
+    def RandomHEStain(self,image,label):
+        if random.random() < self.HEStain_prob:
+            img_he = skimage.color.rgb2hed(image)
+            img_he[:, :, 0] = img_he[:, :, 0] * random.normal(1.0, 0.02, 1)  # H
+            img_he[:, :, 1] = img_he[:, :, 1] * random.normal(1.0, 0.02, 1)  # E
+            img_rgb = np.clip(skimage.color.hed2rgb(img_he), 0, 1)
+            image = Image.fromarray(np.uint8(img_rgb * 255.999), image.mode)
+
+            #TODO: why is label here?
+            return image, label
+        else:
+            return image, label
+
+    def normalise(self, image,label):
+        if random.random() < self.norm_prob:
+            norm = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            return norm(image), norm(label)
+        else:
+            return image, label
+
+    def NormaliseRGB(self, image, label):
+        if random.random() < self.norm_rgb_prob:
+            """Normalizing function we got from the cedars-sinai medical center"""
+            image = np.array(image)
+            #if target is None:
+            target = np.array([[148.60, 41.56], [169.30, 9.01], [105.97, 6.67]])
+
+            M, N = image.shape[:2]
+
+            whitemask = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+            whitemask = whitemask > 215  ## TODO: Hard code threshold; replace with Otsu
+
+            imagelab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+
+            imageL, imageA, imageB = cv2.split(imagelab)
+
+            # mask is valid when true
+            imageLM = np.ma.MaskedArray(imageL, whitemask)
+            imageAM = np.ma.MaskedArray(imageA, whitemask)
+            imageBM = np.ma.MaskedArray(imageB, whitemask)
+
+            ## Sometimes STD is near 0, or 0; add epsilon to avoid div by 0 -NI
+            epsilon = 1e-11
+
+            imageLMean = imageLM.mean()
+            imageLSTD = imageLM.std() + epsilon
+
+            imageAMean = imageAM.mean()
+            imageASTD = imageAM.std() + epsilon
+
+            imageBMean = imageBM.mean()
+            imageBSTD = imageBM.std() + epsilon
+
+            # normalization in lab
+            imageL = (imageL - imageLMean) / imageLSTD * target[0][1] + target[0][0]
+            imageA = (imageA - imageAMean) / imageASTD * target[1][1] + target[1][0]
+            imageB = (imageB - imageBMean) / imageBSTD * target[2][1] + target[2][0]
+
+            imagelab = cv2.merge((imageL, imageA, imageB))
+            imagelab = np.clip(imagelab, 0, 255)
+            imagelab = imagelab.astype(np.uint8)
+
+            # Back to RGB space
+            returnimage = cv2.cvtColor(imagelab, cv2.COLOR_LAB2RGB)
+            # Replace white pixels
+            returnimage[whitemask] = image[whitemask]
+
+            return transforms.ToPILImage()(returnimage), label
+        else:
+            return image,label
+
+
+    def gaussian_blur(self, image,label):
+        if random.random() < self.gaus_blur_prob:
+            sigma = random.normal(0.0, 0.5, 1)
+            return image.filter(ImageFilter.GaussianBlur(sigma)), label
+        else:
+            return image, label
+
+    def extended_rotate(self, image, label):
+        if random.random() < self.ext_rot_prob:
+            self.angle = random.choice([0, 90, 180, 270])
+            return image.rotate(self.angle, expand=1), label.rotate(self.angle, expand=1)
+        else:
+            return image,label
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ## Example for the proof-of-concept:

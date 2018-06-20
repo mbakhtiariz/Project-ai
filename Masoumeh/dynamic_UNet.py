@@ -10,7 +10,7 @@ from torch.autograd import Variable
 import numpy as np
 import math
 
-from other.hyperparam import load_hyperparams
+from Util_functions import load_hyperparams
 
 
 class UNet(nn.Module):
