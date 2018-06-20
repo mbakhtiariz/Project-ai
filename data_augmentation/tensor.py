@@ -6,6 +6,9 @@ class ToTensor(object):
     Randomly flips an image and its mask.
     """
 
+    def __init__(self) -> None:
+        self.to_tens = transforms.ToTensor()
+
     def __call__(self, sample: tuple) -> tuple:
         return self.toTensor(sample[0], sample[1])
 
@@ -18,7 +21,4 @@ class ToTensor(object):
         Returns:
             ToTensor: Converted image.
         """
-        # assert isinstance(image, Image) and isinstance(mask, Image)
-
-        to_tens = transforms.ToTensor()
-        return to_tens(image), to_tens(mask)
+        return self.to_tens(image), self.to_tens(mask)

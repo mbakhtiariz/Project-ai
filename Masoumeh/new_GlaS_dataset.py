@@ -87,7 +87,7 @@ class GlaSDataset(Dataset):
         self.transform_anno = transform_anno
 
     def __len__(self):
-        # multiply by 5 so that we have 5 more data.
+        # multiply by self.dataset_expansion_factor so that we have 5 more data.
         return self.dataset_expansion_factor * len(self.framework)
 
     def __getitem__(self, index):

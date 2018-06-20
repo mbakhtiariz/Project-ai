@@ -7,6 +7,9 @@ class ToPILImage(object):
     Randomly flips an image and its mask.
     """
 
+    def __init__(self) -> None:
+        self._to_pil = transforms.ToPILImage()
+
     def __call__(self, sample: tuple) -> tuple:
         return self.to_pil_image(sample[0], sample[1])
 
@@ -21,5 +24,4 @@ class ToPILImage(object):
         """
         if len(mask.shape) == 2:
             mask = np.expand_dims(mask, axis=2)
-        to_pil_image = transforms.ToPILImage()
-        return to_pil_image(image), to_pil_image(mask)
+        return self._to_pil(image), self._to_pil(mask)

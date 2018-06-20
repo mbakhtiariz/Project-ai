@@ -35,7 +35,7 @@ class GlaSDataset(Dataset):
     """ GlaS Dataset  """
 
     def __init__(self, csv_file=data_path + grade_file, root_dir=data_path, transform=lambda x: x,
-                 desired_dataset=None):
+                 desired_dataset=None, data_expansion_factor: int=1):
         """
         Arguments:
             csv_file: path to the grade csv-file
@@ -44,6 +44,8 @@ class GlaSDataset(Dataset):
             desired_dataset: (optional) rows where the name does not contains this keyword will be deleted
                     this allows you to split the dataset into 'train' and 'test'
         """
+
+        self.data_expansion_factor = data_expansion_factor
 
         # File extensions *cough* hardcoded *cough*
         self.image_ext = '.bmp'
@@ -65,7 +67,8 @@ class GlaSDataset(Dataset):
         self.transform = transform
 
     def __len__(self):
-        return len(self.framework)
+        # artificially "clone" the dataset to get more images.
+        return self.data_expansion_factor * len(self.framework)
 
     def __getitem__(self, index):
         """Sample format:
@@ -75,6 +78,8 @@ class GlaSDataset(Dataset):
             GlaS: assigned GlaS grade (target #1)
             grade: assigned (Sirinukunwattana et al. 2015) grade (target #2)
         """
+        # because if artificially 'cloned' the dataset, we need the below line to get the real index
+        index = index // self.data_expansion_factor
 
         image_name = self.root_dir + self.framework.iloc[index, 0]
         image = io.imread(image_name + self.image_ext)

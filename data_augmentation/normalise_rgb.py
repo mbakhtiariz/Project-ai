@@ -8,6 +8,7 @@ class NormaliseRGB(object):
     """Normalizing function we got from the cedars-sinai medical center"""
 
     def __call__(self, sample: tuple) -> tuple:
+        self._toPILImage = transforms.ToPILImage()
         return self.normalize(sample[0], sample[1])
 
     def normalize(self, image: Image, mask: Image, target=None) -> tuple:
@@ -57,7 +58,7 @@ class NormaliseRGB(object):
         # Replace white pixels
         returnimage[whitemask] = image[whitemask]
 
-        return transforms.ToPILImage()(returnimage), mask
+        return self._toPILImage(returnimage), mask
 
 # if __name__ == '__main__':
 #     dataset = GlaSDataset(csv_file="..\\data\\GlaS\\Grade.csv", root_dir="..\\data\\GlaS\\")
