@@ -20,7 +20,7 @@ def train_UNet(train_loader,valid_loader, hyper_params, device):
     cls_alpha = hyper_params["cls_alpha"] # Classification loss coef
     tolerance = hyper_params["tolerance"] # For early stopping
 
-    '''
+    
     # Build Network:
     net = UNet(hyper_params).to(device)
 
@@ -43,10 +43,10 @@ def train_UNet(train_loader,valid_loader, hyper_params, device):
 
     # Each epoch has a training and validation phase
     avg_loss = []
-    '''
 
 
-    data_augmentation = list(range(1,10))
+
+    #data_augmentation = list(range(1,10))
     '''
         [None,
                          transforms.RandomRotation((90, 90)),
@@ -81,54 +81,54 @@ def train_UNet(train_loader,valid_loader, hyper_params, device):
                 #for aug in range(1,10)data_augmentation:
                     #if aug:
 
-                    images = Variable(sampled_batch['image'].to(device).float())
-                    seg_labels = Variable(sampled_batch['image_anno'].to(device).float())
-                    cls_labels = Variable(sampled_batch['GlaS'].to(device).float())
-                    # Forward pass
-                    utils.save_image(images, "output/input_{}_{}.bmp".format(epoch,batch_index))
-                    utils.save_image(seg_labels, "output/target_{}_{}.bmp".format(epoch,batch_index))
+                images = Variable(sampled_batch['image'].to(device).float())
+                seg_labels = Variable(sampled_batch['image_anno'].to(device).float())
+                cls_labels = Variable(sampled_batch['GlaS'].to(device).float())
+                # Forward pass
+                #utils.save_image(images, "output/input_{}_{}.bmp".format(epoch,batch_index))
+                #utils.save_image(seg_labels, "output/target_{}_{}.bmp".format(epoch,batch_index))
 
 
 
-            '''
-                    seg_out, cls_out = net(images)
-                    cls_out = torch.squeeze(cls_out, dim = 1).to(device)
-                    # Find loss
-                    cls_loss = cls_criterion(cls_out, cls_labels)
-                    seg_loss = seg_criterion(seg_out, seg_labels)
-                    batch_loss = seg_loss + cls_alpha*cls_loss
-                    # Backward and optimize
-                    if phase == 'train':
-                        optimizer.zero_grad()
-                        batch_loss.backward()
-                        optimizer.step()
-                    out.write(str(batch_loss.item()) + "\n")
-                    one_epoch_losses.append(batch_loss.item())
-    
-            
-                if phase == 'val':
-                    print("1 epoch losses:", one_epoch_losses)
-                    last_avg_loss = np.mean(one_epoch_losses)
-                    avg_loss.append(last_avg_loss)
-                    print("avg losses:", avg_loss)
-                    if last_avg_loss < minimum_loss:
-                        minimum_loss = last_avg_loss
-                        print("Minimum Average Loss so far:", minimum_loss)
-                        torch.save(net.state_dict(), 'output/best_model.pth')
-                        #print("Final result dimension- seg:", seg_out.size())
-                        #print("Final result dimension- cls:", cls_out.size())
-                        print("Final result dimension- seg:", F.sigmoid(seg_out))
-                        print("labels of seg:", seg_labels)
-                        post_transform = transforms.Compose([Binarize(threshold=seg_out.mean())])
-                        thres = post_transform(seg_out)
-                        utils.save_image(thres, "output/thres_{}.bmp".format(epoch))
-                        utils.save_image(images, "output/input_{}.bmp".format(epoch))
-                        utils.save_image(F.sigmoid(seg_out), "output/output_{}.bmp".format(epoch))
-                        utils.save_image(seg_labels, "output/target_{}.bmp".format(epoch))
-                    if early_stopping(epoch, avg_loss, tolerance):
-                        finish = True
-                        break
-            if finish == True:
-                break
-    
-            '''
+
+                seg_out, cls_out = net(images)
+                cls_out = torch.squeeze(cls_out, dim = 1).to(device)
+                # Find loss
+                cls_loss = cls_criterion(cls_out, cls_labels)
+                seg_loss = seg_criterion(seg_out, seg_labels)
+                batch_loss = seg_loss + cls_alpha*cls_loss
+                # Backward and optimize
+                if phase == 'train':
+                    optimizer.zero_grad()
+                    batch_loss.backward()
+                    optimizer.step()
+                out.write(str(batch_loss.item()) + "\n")
+                one_epoch_losses.append(batch_loss.item())
+
+
+            if phase == 'val':
+                print("1 epoch losses:", one_epoch_losses)
+                last_avg_loss = np.mean(one_epoch_losses)
+                avg_loss.append(last_avg_loss)
+                print("avg losses:", avg_loss)
+                if last_avg_loss < minimum_loss:
+                    minimum_loss = last_avg_loss
+                    print("Minimum Average Loss so far:", minimum_loss)
+                    torch.save(net.state_dict(), 'output/best_model.pth')
+                    #print("Final result dimension- seg:", seg_out.size())
+                    #print("Final result dimension- cls:", cls_out.size())
+                    print("Final result dimension- seg:", F.sigmoid(seg_out))
+                    print("labels of seg:", seg_labels)
+                    post_transform = transforms.Compose([Binarize(threshold=seg_out.mean())])
+                    thres = post_transform(seg_out)
+                    utils.save_image(thres, "output/thres_{}.bmp".format(epoch))
+                    utils.save_image(images, "output/input_{}.bmp".format(epoch))
+                    utils.save_image(F.sigmoid(seg_out), "output/output_{}.bmp".format(epoch))
+                    utils.save_image(seg_labels, "output/target_{}.bmp".format(epoch))
+                if early_stopping(epoch, avg_loss, tolerance):
+                    finish = True
+                    break
+        if finish == True:
+            break
+
+
