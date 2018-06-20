@@ -9,7 +9,7 @@ from torchvision import utils, transforms
 from GlaS_dataset import GlaSDataset
 from UNet import UNet
 from data_augmentation.HEStain import RandomHEStain
-from data_augmentation.binarize import Binarize
+from data_augmentation.binarize import Binarize, Binarize_Output
 from data_augmentation.center_crop import CenterCrop
 from data_augmentation.elastic_deformation import ElasticDeformation
 from data_augmentation.flip import Flip
@@ -62,8 +62,12 @@ def train(model, device, train_loader, optimizer, epoch, log_interval=10):
                 epoch, batch_i * len(data), len(train_loader.dataset),
                        100. * batch_i / len(train_loader), loss.item()))
 
-        if batch_i == 164:
-            post_transform = transforms.Compose([Binarize(threshold=output.mean())])
+
+
+        if batch_i == 1:
+
+
+            post_transform = transforms.Compose([Binarize_Output(threshold=output.mean())])
             thres = post_transform(output)
             # hist_eq = torch.histc(output.to(torch.device("cpu")))
             utils.save_image(data, "input_{}.bmp".format(epoch))

@@ -27,7 +27,7 @@ from data_augmentation.rotation import Rotation
 from data_augmentation.tensor import ToTensor
 from data_augmentation.transpose_and_sqeeze import TransposeAndSqueeze
 
-data_path = "data\\GlaS\\"
+data_path = "../../data/Glas/"
 grade_file = "Grade.csv"
 
 
