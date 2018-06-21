@@ -11,7 +11,9 @@ import pandas as pd
 from skimage import io
 from torch.utils.data import Dataset
 from torchvision.transforms import transforms
-
+import numpy as np
+from scipy import ndimage
+from copy import copy
 # My configuration/path
 from data_augmentation.HEStain import RandomHEStain
 from data_augmentation.binarize import Binarize
@@ -27,7 +29,9 @@ from data_augmentation.rotation import Rotation
 from data_augmentation.tensor import ToTensor
 from data_augmentation.transpose_and_sqeeze import TransposeAndSqueeze
 
-data_path = "../../data/Glas/"
+from PIL import Image
+
+data_path = "../data/Glas/"
 grade_file = "Grade.csv"
 
 
@@ -90,9 +94,32 @@ class GlaSDataset(Dataset):
         GlaS = self.framework.iloc[index, 2]
         grade = self.framework.iloc[index, 3]
 
-        image, image_anno = self.transform((image, image_anno))
 
-        return {'image': image, 'image_anno': image_anno, 'patient_id': patient_id, 'GlaS': GlaS, 'grade': grade}
+        # Calculating Weight Map for Loss:
+        sig = 5
+        w_0 = 10
+        gland_num = len(np.unique(image_anno))
+        #print(np.unique(image_anno))
+        w = np.zeros((gland_num, image_anno.shape[0], image_anno.shape[1]))
+        for g  in range(1, gland_num):
+            #print(g,"th gland map:")
+            # Filter out all glands except g th one.
+            filtered_anno = (~(image_anno == g)).astype(int)
+            w[g] = ndimage.distance_transform_edt(filtered_anno)
+            #print(filtered_anno)
+        #print(min(2,gland_num-1))
+        dist = -(np.sum(np.partition(w, min(2,gland_num-1), axis=0)[0:2], axis=0)**2)/(2*sig**2)
+        weight_map = w_0 * np.exp(dist)
+        #print(weight_map)
+
+
+
+        image, image_anno, weight_map = self.transform((image, image_anno,weight_map.astype(np.uint8)))
+        #print(weight_map.size)
+
+        #return {'image': image, 'image_anno': image_anno, 'weight': weight, 'patient_id': patient_id, 'GlaS': GlaS, 'grade': grade}
+        return {'image': image, 'image_anno': image_anno, 'loss_weight': weight_map, 'patient_id': patient_id, 'GlaS': GlaS,
+                'grade': grade}
 
 
 # Example for the proof-of-concept:

@@ -41,13 +41,26 @@ def train(model, device, train_loader, optimizer, epoch, log_interval=10):
     for batch_i, sample in enumerate(train_loader):
         data, target = sample['image'], sample['image_anno']
 
+        #print(sample['loss_weight'])
+        #print(torch.max(sample['loss_weight']))
+        #print(torch.min(sample['loss_weight']))
         # target = torch.squeeze(target, dim=0)
         data, target = data.to(device), target.to(device)
 
+
         optimizer.zero_grad()
         output = model(data)
-
-        loss = F.mse_loss(output, target)
+        activation = torch.nn.Sigmoid()
+        criterion = torch.nn.BCELoss(weight=sample['loss_weight'],size_average=False).cuda()
+        loss = criterion(activation(output), target)
+        #loss_weights = torch.squeeze(sample['loss_weight']).to(device)
+        #_target = torch.squeeze(target).to(device)
+        #_output = torch.squeeze(output).to(device)
+        #print("lllllllllllllllllloooooooooooooooosssssssss:",loss_weights.size())
+        #print("lllllllllllllllllloooooooooooooooosssssssss:",_output.size())
+        #print("lllllllllllllllllloooooooooooooooosssssssss:",_target.size())
+        #loss = F.cross_entropy(_output, _target ,weight = loss_weights)
+        #loss = F.mse_loss(output, target)
         # loss = stable_bce_loss(output, target)
         # loss = F.binary_cross_entropy(output, target)	#Needs LongTensor, given FloatTensor
         # loss = F.l1_loss(output, target)		#Horribly high loss
@@ -70,11 +83,11 @@ def train(model, device, train_loader, optimizer, epoch, log_interval=10):
             post_transform = transforms.Compose([Binarize_Output(threshold=output.mean())])
             thres = post_transform(output)
             # hist_eq = torch.histc(output.to(torch.device("cpu")))
-            utils.save_image(data, "input_{}.bmp".format(epoch))
-            utils.save_image(target, "target_{}.bmp".format(epoch))
+            utils.save_image(data, "output/input_{}.bmp".format(epoch))
+            utils.save_image(target, "output/target_{}.bmp".format(epoch))
 
-            utils.save_image(output, "output_{}.bmp".format(epoch))
-            utils.save_image(thres, "thres_{}.bmp".format(epoch))
+            utils.save_image(output, "output/output_{}.bmp".format(epoch))
+            utils.save_image(thres, "output/thres_{}.bmp".format(epoch))
 
 
 if __name__ == '__main__':
