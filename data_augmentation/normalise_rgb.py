@@ -9,10 +9,10 @@ class NormaliseRGB(object):
 
     def __call__(self, sample: tuple) -> tuple:
         self._toPILImage = transforms.ToPILImage()
-        return self.normalize(sample[0], sample[1])
+        return self.normalize(sample[0], sample[1], sample[2])
 
-    def normalize(self, image: Image, mask: Image, target=None) -> tuple:
-        assert isinstance(image, Image) and isinstance(mask, Image)
+    def normalize(self, image: Image, mask: Image,weight: Image, target=None) -> tuple:
+        assert isinstance(image, Image) and isinstance(mask, Image) and isinstance(weight, Image)
 
         image = np.array(image)
         if target is None:
@@ -58,7 +58,7 @@ class NormaliseRGB(object):
         # Replace white pixels
         returnimage[whitemask] = image[whitemask]
 
-        return self._toPILImage(returnimage), mask
+        return self._toPILImage(returnimage), mask, weight
 
 # if __name__ == '__main__':
 #     dataset = GlaSDataset(csv_file="..\\data\\GlaS\\Grade.csv", root_dir="..\\data\\GlaS\\")

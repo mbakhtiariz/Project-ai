@@ -8,15 +8,15 @@ class RandomHEStain(object):
     """Transfer the given PIL.Image from rgb to HE, perturbate, transfer back to rgb """
 
     def __call__(self, sample: tuple) -> tuple:
-        return self.he_stain(sample[0], sample[1])
+        return self.he_stain(sample[0], sample[1],sample[2])
 
-    def he_stain(self, image: Image, mask: Image) -> tuple:
+    def he_stain(self, image: Image, mask: Image,weight: Image) -> tuple:
         img_he = skimage.color.rgb2hed(image)
         img_he[:, :, 0] = img_he[:, :, 0] * random.normal(1.0, 0.02, 1)  # H
         img_he[:, :, 1] = img_he[:, :, 1] * random.normal(1.0, 0.02, 1)  # E
         img_rgb = np.clip(skimage.color.hed2rgb(img_he), 0, 1)
         image = Image.fromarray(np.uint8(img_rgb * 255.999), image.mode)
-        return image, mask
+        return image, mask,weight
 
 
 # if __name__ == '__main__':

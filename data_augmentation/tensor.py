@@ -10,9 +10,9 @@ class ToTensor(object):
         self.to_tens = transforms.ToTensor()
 
     def __call__(self, sample: tuple) -> tuple:
-        return self.toTensor(sample[0], sample[1])
+        return self.toTensor(sample[0], sample[1], sample[2])
 
-    def toTensor(self, image, mask) -> tuple:
+    def toTensor(self, image, mask,weight) -> tuple:
         """
         Args:
             image (PIL Image or numpy.ndarray): Image to be converted to tensor.
@@ -21,4 +21,4 @@ class ToTensor(object):
         Returns:
             ToTensor: Converted image.
         """
-        return self.to_tens(image), self.to_tens(mask)
+        return self.to_tens(image), self.to_tens(mask), self.to_tens(weight)

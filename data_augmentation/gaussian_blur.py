@@ -27,13 +27,13 @@ class GaussianBlur(object):
             self._sigma = sigma
 
     def __call__(self, sample: tuple) -> tuple:
-        return self.gaussian_blur(sample[0], sample[1])
+        return self.gaussian_blur(sample[0], sample[1], sample[2])
 
-    def gaussian_blur(self, image: Image, mask: Image) -> tuple:
-        assert isinstance(image, Image) and isinstance(mask, Image)
+    def gaussian_blur(self, image: Image, mask: Image, weight: Image) -> tuple:
+        assert isinstance(image, Image) and isinstance(mask, Image) and isinstance(weight, Image)
 
         if random.random() > self._probability:
-            return image, mask
+            return image, mask, weight
         else:
             if not isinstance(self._sigma, (tuple, list)):
                 self._sigma = [self._sigma]
@@ -41,4 +41,4 @@ class GaussianBlur(object):
             sigma = random.choices(self._sigma)
             if isinstance(sigma, list):
                 sigma = sigma[0]
-            return image.filter(ImageFilter.GaussianBlur(sigma)), mask
+            return image.filter(ImageFilter.GaussianBlur(sigma)), mask, weight

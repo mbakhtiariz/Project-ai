@@ -11,9 +11,9 @@ class ToPILImage(object):
         self._to_pil = transforms.ToPILImage()
 
     def __call__(self, sample: tuple) -> tuple:
-        return self.to_pil_image(sample[0], sample[1])
+        return self.to_pil_image(sample[0], sample[1], sample[2])
 
-    def to_pil_image(self, image, mask) -> tuple:
+    def to_pil_image(self, image, mask, weight) -> tuple:
         """
         Args:
             image (Tensor or numpy.ndarray): Image to be converted to PIL Image.
@@ -24,4 +24,6 @@ class ToPILImage(object):
         """
         if len(mask.shape) == 2:
             mask = np.expand_dims(mask, axis=2)
-        return self._to_pil(image), self._to_pil(mask)
+        if len(weight.shape) == 2:
+            weight = np.expand_dims(weight, axis=2)
+        return self._to_pil(image), self._to_pil(mask), self._to_pil(weight)

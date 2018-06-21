@@ -12,9 +12,9 @@ class TransposeAndSqueeze(object):
         self.to_tens = transforms.ToTensor()
 
     def __call__(self, sample: tuple) -> tuple:
-        return self.transpose_and_squeeze(sample[0], sample[1])
+        return self.transpose_and_squeeze(sample[0], sample[1], sample[2])
 
-    def transpose_and_squeeze(self, image, mask) -> tuple:
+    def transpose_and_squeeze(self, image, mask,weight) -> tuple:
         """
         Args:
             image (PIL Image or torch.Tensor): Tensor to be transposed
@@ -26,5 +26,6 @@ class TransposeAndSqueeze(object):
         if isinstance(image, Image):
             image = self.to_tens(image)
             mask = self.to_tens(mask)
+            weight = self.to_tens(weight)
 
-        return image.numpy().transpose((1, 2, 0)), np.squeeze(mask.numpy().transpose((1, 2, 0)), axis=2)
+        return image.numpy().transpose((1, 2, 0)), np.squeeze(mask.numpy().transpose((1, 2, 0)), axis=2), np.squeeze(weight.numpy().transpose((1, 2, 0)), axis=2)

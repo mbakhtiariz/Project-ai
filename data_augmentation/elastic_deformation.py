@@ -40,13 +40,13 @@ class ElasticDeformation(object):
         """
         grid_size = 3
         displacement = 15
-        return self.elastic_transform(sample[0], sample[1], grid_size=grid_size, displacement=displacement)
+        return self.elastic_transform(sample[0], sample[1], sample[2], grid_size=grid_size, displacement=displacement)
 
-    def elastic_transform(self, image: Image, mask: Image, grid_size: int, displacement: (int, float)) -> tuple:
-        assert isinstance(image, Image) and isinstance(mask, Image)
+    def elastic_transform(self, image: Image, mask: Image,weight: Image, grid_size: int, displacement: (int, float)) -> tuple:
+        assert isinstance(image, Image) and isinstance(mask, Image) and isinstance(weight, Image)
 
         if random.random() > self._probability:
-            return image, mask
+            return image, mask, weight
 
         width, height = image.size
 
@@ -72,7 +72,8 @@ class ElasticDeformation(object):
         map_y_32 = np.append([], [ar[:, 0] for ar in grid_z]).reshape(height, width).astype('float32')
 
         return fromarray(cv2.remap(np.array(image), map_x_32, map_y_32, cv2.INTER_CUBIC)), \
-               fromarray(cv2.remap(np.array(mask), map_x_32, map_y_32, cv2.INTER_CUBIC))
+               fromarray(cv2.remap(np.array(mask), map_x_32, map_y_32, cv2.INTER_CUBIC)), \
+               fromarray(cv2.remap(np.array(weight), map_x_32, map_y_32, cv2.INTER_CUBIC))
 
 # if __name__ == '__main__':
 #

@@ -14,8 +14,8 @@ class Resize(object):
         self._size = size
 
     def __call__(self, sample: tuple) -> tuple:
-        return self.resize(sample[0], sample[1])
+        return self.resize(sample[0], sample[1],sample[2])
 
-    def resize(self, image, mask) -> tuple:
+    def resize(self, image, mask, weight) -> tuple:
         resize = transforms.Resize(self._size, self._interpolation)
-        return resize(image), resize(mask)
+        return resize(image), resize(mask),resize(weight)
