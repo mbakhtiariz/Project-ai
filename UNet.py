@@ -153,7 +153,7 @@ class UNet(torch.nn.Module):
 
         # Softmax.. why not...
         # self.softmax = torch.nn.Softmax2d()
-        self.tanh = torch.nn.Tanh()
+        # self.tanh = torch.nn.Tanh()
 
         # Init weights
         for m in self.modules():

@@ -97,20 +97,49 @@ class GlaSDataset(Dataset):
 
         # Calculating Weight Map for Loss:
         sig = 5
-        w_0 = 10
-        gland_num = len(np.unique(image_anno))
-        #print(np.unique(image_anno))
-        w = np.zeros((gland_num, image_anno.shape[0], image_anno.shape[1]))
-        for g  in range(1, gland_num):
-            #print(g,"th gland map:")
-            # Filter out all glands except g th one.
-            filtered_anno = (~(image_anno == g)).astype(int)
-            w[g] = ndimage.distance_transform_edt(filtered_anno)
-            #print(filtered_anno)
-        #print(min(2,gland_num-1))
-        dist = -(np.sum(np.partition(w, min(2,gland_num-1), axis=0)[0:2], axis=0)**2)/(2*sig**2)
-        weight_map = w_0 * np.exp(dist)
-        #print(weight_map)
+        w_0 = 3
+        glands = np.unique(image_anno) # should include zero for background, [0,1,2,...]
+        gland_num = len(glands) - 1  # -1 for removing background from calculation
+        print(gland_num, type(gland_num))
+        if len(glands) == 1:
+            if 0 in glands:
+                # If all the image is just backgound and no gland:
+                weight_map = np.zeros((1, image_anno.shape[0], image_anno.shape[1]))
+                print("No Gland! caaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaasssssssse 1!")
+            elif not(0 in glands):
+                # If all the image is just 1 gland and there is no background:
+                weight_map = 1 + w_0 * np.ones((1, image_anno.shape[0], image_anno.shape[1]))
+                print("Just 1 gland ccccccccccccccccccccccccaaaaaaaaaaaaaaaaaasssssssssssssssseeeeee 2!")
+        else:
+            w = np.inf * np.ones((gland_num, image_anno.shape[0], image_anno.shape[1]))
+            for g  in range(0, gland_num):
+
+                # Filter out all glands except g th one.
+                filtered_anno = (~(image_anno == g + 1)).astype(int)
+                # Calculate the distance to nearest point in g th gland for every pixel:
+                w[g] = ndimage.distance_transform_edt(filtered_anno)
+            #print(w)
+            print("---------------------------------")
+            # Find 2 minimum distances for every pixel:
+            #dist = -(np.sum(np.partition(w, min(2,gland_num), axis=0)[0:min(2,gland_num)], axis=0)**2)/(2*sig**2)
+            dist = -(np.sum(np.sort(w, axis=0)[0:min(2, gland_num)], axis=0) ** 2) / (2 * sig ** 2)
+            #print(dist)
+            weight_map = 1 + w_0 * np.exp(dist)
+            #print(weight_map)
+
+        #from sklearn.preprocessing import normalize
+        #normed_matrix = normalize(weight_map, axis=1, norm='l1')
+
+        #print("min of weight map", np.amin(weight_map))
+        #print("max of weight map", np.amax(weight_map))
+        #print("After norm")
+        #xmin = np.amin(weight_map)
+        #xmax = np.amax(weight_map)
+        #weight_map = (weight_map - xmin) / (xmax - xmin)
+        print("min of weight map", np.amin(weight_map))
+        print("max of weight map", np.amax(weight_map))
+
+
 
 
 

@@ -5,7 +5,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import utils, transforms
-
+import matplotlib
+import matplotlib.pyplot as plt
+#matplotlib.use('GTKAgg')
+#matplotlib.use('TkAgg')
 from GlaS_dataset import GlaSDataset
 from UNet import UNet
 from data_augmentation.HEStain import RandomHEStain
@@ -37,8 +40,11 @@ def stable_bce_loss(input, target):
 
 
 def train(model, device, train_loader, optimizer, epoch, log_interval=10):
+    #plt.figure()
+    x = 1
     model.train()
     for batch_i, sample in enumerate(train_loader):
+        x += 1
         data, target = sample['image'], sample['image_anno']
 
         #print(sample['loss_weight'])
@@ -48,11 +54,15 @@ def train(model, device, train_loader, optimizer, epoch, log_interval=10):
         data, target = data.to(device), target.to(device)
 
 
+
+
+
         optimizer.zero_grad()
         output = model(data)
         activation = torch.nn.Sigmoid()
-        criterion = torch.nn.BCELoss(weight=sample['loss_weight'],size_average=False).cuda()
-        loss = criterion(activation(output), target)
+        criterion = torch.nn.BCELoss(weight=sample['loss_weight']).cuda()#,size_average=False).cuda()
+        #criterion = torch.nn.BCELoss().cuda()
+        loss = 1000*criterion(activation(output), target)
         #loss_weights = torch.squeeze(sample['loss_weight']).to(device)
         #_target = torch.squeeze(target).to(device)
         #_output = torch.squeeze(output).to(device)
@@ -77,17 +87,22 @@ def train(model, device, train_loader, optimizer, epoch, log_interval=10):
 
 
 
-        if batch_i == 1:
+        if x % 10 == 0:
 
 
             post_transform = transforms.Compose([Binarize_Output(threshold=output.mean())])
             thres = post_transform(output)
-            # hist_eq = torch.histc(output.to(torch.device("cpu")))
-            utils.save_image(data, "output/input_{}.bmp".format(epoch))
-            utils.save_image(target, "output/target_{}.bmp".format(epoch))
 
-            utils.save_image(output, "output/output_{}.bmp".format(epoch))
-            utils.save_image(thres, "output/thres_{}.bmp".format(epoch))
+            #plt.imshow(thres['output'])
+            #plt.title('output')
+            #plt.show()
+            # hist_eq = torch.histc(output.to(torch.device("cpu")))
+            utils.save_image(data, "output/input_{}_{}.bmp".format(epoch,batch_i))
+            utils.save_image(target, "output/target_{}_{}.bmp".format(epoch,batch_i))
+
+            utils.save_image(output, "output/output_{}_{}.bmp".format(epoch,batch_i))
+            utils.save_image(thres, "output/thres_{}_{}.bmp".format(epoch,batch_i))
+            utils.save_image(100*sample['loss_weight'], "output/weights_{}_{}.bmp".format(epoch,batch_i))
 
 
 if __name__ == '__main__':
