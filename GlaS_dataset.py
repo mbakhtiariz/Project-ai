@@ -97,56 +97,24 @@ class GlaSDataset(Dataset):
 
         # Calculating Weight Map for Loss:
         sig = 5
-        w_0 = 3
+        w_0 = 10
         glands = np.unique(image_anno) # should include zero for background, [0,1,2,...]
         gland_num = len(glands) - 1  # -1 for removing background from calculation
-        print(gland_num, type(gland_num))
         if len(glands) == 1:
-            if 0 in glands:
-                # If all the image is just backgound and no gland:
+            if 0 in glands:# If all the image is just backgound and no gland:
                 weight_map = np.zeros((1, image_anno.shape[0], image_anno.shape[1]))
-                print("No Gland! caaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaasssssssse 1!")
-            elif not(0 in glands):
-                # If all the image is just 1 gland and there is no background:
+            elif not(0 in glands):# If all the image is just 1 gland and there is no background:
                 weight_map = 1 + w_0 * np.ones((1, image_anno.shape[0], image_anno.shape[1]))
-                print("Just 1 gland ccccccccccccccccccccccccaaaaaaaaaaaaaaaaaasssssssssssssssseeeeee 2!")
         else:
             w = np.inf * np.ones((gland_num, image_anno.shape[0], image_anno.shape[1]))
             for g  in range(0, gland_num):
-
-                # Filter out all glands except g th one.
-                filtered_anno = (~(image_anno == g + 1)).astype(int)
-                # Calculate the distance to nearest point in g th gland for every pixel:
-                w[g] = ndimage.distance_transform_edt(filtered_anno)
-            #print(w)
-            print("---------------------------------")
-            # Find 2 minimum distances for every pixel:
-            #dist = -(np.sum(np.partition(w, min(2,gland_num), axis=0)[0:min(2,gland_num)], axis=0)**2)/(2*sig**2)
-            dist = -(np.sum(np.sort(w, axis=0)[0:min(2, gland_num)], axis=0) ** 2) / (2 * sig ** 2)
-            #print(dist)
+                filtered_anno = (~(image_anno == g + 1)).astype(int)# Filter out all glands except g th one.
+                w[g] = ndimage.distance_transform_edt(filtered_anno)# Calculate the distance to nearest point in g th gland for every pixel:
+            dist = -(np.sum(np.sort(w, axis=0)[0:min(2, gland_num)], axis=0) ** 2) / (2 * sig ** 2)# Find 2 minimum distances for every pixel:
             weight_map = 1 + w_0 * np.exp(dist)
-            #print(weight_map)
+        weight_map = 1000 * weight_map
+        image, image_anno, weight_map = self.transform((image, image_anno,weight_map.astype(np.float32)))
 
-        #from sklearn.preprocessing import normalize
-        #normed_matrix = normalize(weight_map, axis=1, norm='l1')
-
-        #print("min of weight map", np.amin(weight_map))
-        #print("max of weight map", np.amax(weight_map))
-        #print("After norm")
-        #xmin = np.amin(weight_map)
-        #xmax = np.amax(weight_map)
-        #weight_map = (weight_map - xmin) / (xmax - xmin)
-        print("min of weight map", np.amin(weight_map))
-        print("max of weight map", np.amax(weight_map))
-
-
-
-
-
-        image, image_anno, weight_map = self.transform((image, image_anno,weight_map.astype(np.uint8)))
-        #print(weight_map.size)
-
-        #return {'image': image, 'image_anno': image_anno, 'weight': weight, 'patient_id': patient_id, 'GlaS': GlaS, 'grade': grade}
         return {'image': image, 'image_anno': image_anno, 'loss_weight': weight_map, 'patient_id': patient_id, 'GlaS': GlaS,
                 'grade': grade}
 
