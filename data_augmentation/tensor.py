@@ -21,4 +21,7 @@ class ToTensor(object):
         Returns:
             ToTensor: Converted image.
         """
+        #print("before tensor:")
+        #print(weight.getextrema())
+        #print("after tensore")
         return self.to_tens(image), self.to_tens(mask), self.to_tens(weight)

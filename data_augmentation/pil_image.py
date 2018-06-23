@@ -26,4 +26,9 @@ class ToPILImage(object):
             mask = np.expand_dims(mask, axis=2)
         if len(weight.shape) == 2:
             weight = np.expand_dims(weight, axis=2)
-        return self._to_pil(image), self._to_pil(mask), self._to_pil(weight)
+
+        a, b, c =self._to_pil(image), self._to_pil(mask), self._to_pil(weight)
+
+        #print("After appling pil image")
+        #print(c.getextrema())
+        return a,b,c
