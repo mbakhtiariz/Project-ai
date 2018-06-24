@@ -78,7 +78,6 @@ class UNet(torch.nn.Module):
             self.conv6_1 = torch.nn.Conv2d(1024, 512, kernel_size=1, stride=1)
         self.conv6_2 = torch.nn.Conv2d(1024, 512, kernel_size=3, stride=1, padding=0)
         self.conv6_3 = torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=0)
-
         # Up sampling layer, depth: 2	(7)
         if (upsample_mode == 'linear'
                 or upsample_mode == 'bilinear'

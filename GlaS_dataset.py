@@ -31,7 +31,7 @@ from data_augmentation.transpose_and_sqeeze import TransposeAndSqueeze
 
 from PIL import Image
 
-data_path = "../data/Glas/"
+data_path = "../GitHub/data/GlaS/"
 grade_file = "Grade.csv"
 
 
