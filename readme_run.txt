@@ -1,4 +1,4 @@
-Please type this in bash for training and evaluation:
+Please type this in bash for training and validation:
 
 bash run_exp.sh
 
