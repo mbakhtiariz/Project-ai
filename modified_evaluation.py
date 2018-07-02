@@ -3,7 +3,8 @@ import torch
 import torch.nn.functional as F
 from torchvision import utils, transforms
 from torch.utils.data import DataLoader
-from UNet import UNet
+#from UNet import UNet
+from modified_Unet import UNet
 from data_augmentation.binarize import Binarize, Binarize_Output
 from data_augmentation.center_crop import CenterCrop
 from data_augmentation.grayscale import Grayscale
@@ -301,15 +302,17 @@ if __name__ == '__main__':
     exp_num = int(sys.argv[1])  # 2
     loss_type = sys.argv[2]  # 'wbce'  # 'mse'  # , 'wbce' , 'jac'
     act_type = 'sigmoid'  # 'none', 'sigmoid', 'tanh', 'soft'
-    result_path = "prj-ai-results-26june/results_" + str(exp_num) + "_" + loss_type + "_" + act_type
-    #result_path = "results/results_" + str(exp_num) + "_" + loss_type + "_" + act_type
-    obj_name = result_path + "/hyper_param"
+    #result_path = "prj-ai-results-26june/results_" + str(exp_num) + "_" + loss_type + "_" + act_type
+    load_data_path = "new_results/results_" + str(exp_num) + "_" + loss_type + "_" + act_type
+
+    obj_name = load_data_path + "/hyper_param"
     hyper_params = load_obj(obj_name)
 
     print(hyper_params)
-    best_model_path = result_path + '/best_model.pth'
+    best_model_path = load_data_path + '/best_model.pth'
 
-    test_output_path = result_path + '/test'
+    result_path = "test_results/results_" + str(exp_num) + "_" + loss_type + "_" + act_type
+    test_output_path = result_path#load_data_path + '/test'
     if not os.path.exists(test_output_path):
         os.makedirs(test_output_path)
 

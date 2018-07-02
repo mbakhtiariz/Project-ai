@@ -33,28 +33,28 @@ class UNet(torch.nn.Module):
         super(UNet, self).__init__()
 
         # Down sampling layer, depth: 0	(1)
-        self.conv1_1 = torch.nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=0)
-        self.conv1_2 = torch.nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0)
+        self.conv1_1 = torch.nn.Sequential(torch.nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=0),torch.nn.BatchNorm2d(64))#,torch.nn.Dropout(p=0.2))
+        self.conv1_2 = torch.nn.Sequential(torch.nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),torch.nn.BatchNorm2d(64))#,torch.nn.Dropout(p=0.2))
         self.max_pool1 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
 
         # Down sampling layer, depth: 1	(2)
-        self.conv2_1 = torch.nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=0)
-        self.conv2_2 = torch.nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=0)
+        self.conv2_1 = torch.nn.Sequential(torch.nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=0))#,torch.nn.BatchNorm2d(128),torch.nn.Dropout(p=0.2))
+        self.conv2_2 = torch.nn.Sequential(torch.nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=0))#,torch.nn.BatchNorm2d(128),torch.nn.Dropout(p=0.2))
         self.max_pool2 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
 
         # Down sampling layer, depth: 2	(3)
-        self.conv3_1 = torch.nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=0)
-        self.conv3_2 = torch.nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=0)
+        self.conv3_1 = torch.nn.Sequential(torch.nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=0))#,torch.nn.BatchNorm2d(256),torch.nn.Dropout(p=0.2))
+        self.conv3_2 = torch.nn.Sequential(torch.nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=0))#,torch.nn.BatchNorm2d(256),torch.nn.Dropout(p=0.2))
         self.max_pool3 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
 
         # Down sampling layer, depth: 3	(4)
-        self.conv4_1 = torch.nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=0)
-        self.conv4_2 = torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=0)
+        self.conv4_1 = torch.nn.Sequential(torch.nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=0))#,torch.nn.BatchNorm2d(512),torch.nn.Dropout(p=0.2))#,torch.nn.BatchNorm2d(512))
+        self.conv4_2 = torch.nn.Sequential(torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=0))#,torch.nn.BatchNorm2d(512),torch.nn.Dropout(p=0.2))#,torch.nn.BatchNorm2d(512))
         self.max_pool4 = torch.nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
 
         # Bottom layer 			(5)
-        self.conv5_1 = torch.nn.Conv2d(512, 1024, kernel_size=3, stride=1, padding=0)
-        self.conv5_2 = torch.nn.Conv2d(1024, 1024, kernel_size=3, stride=1, padding=0)
+        self.conv5_1 = torch.nn.Sequential(torch.nn.Conv2d(512, 1024, kernel_size=3, stride=1, padding=0))#,torch.nn.Dropout(p=0.2))#,torch.nn.BatchNorm2d(1024))
+        self.conv5_2 = torch.nn.Sequential(torch.nn.Conv2d(1024, 1024, kernel_size=3, stride=1, padding=0))#,torch.nn.Dropout(p=0.2))#,torch.nn.BatchNorm2d(1024))
 
         # Up sampling layer, depth: 3	(6)
         if (upsample_mode == 'linear'
@@ -62,12 +62,12 @@ class UNet(torch.nn.Module):
                 or upsample_mode == 'trilinear'
                 or upsample_mode == 'nearest'):
 
-            self.up6 = torch.nn.Upsample(scale_factor=2, mode=upsample_mode, align_corners=True)
+            self.up6 = torch.nn.Sequential(torch.nn.Upsample(scale_factor=2, mode=upsample_mode, align_corners=True))
         elif upsample_mode == 'transpose':
-            self.up6 = torch.nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2)
+            self.up6 = torch.nn.Sequential(torch.nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2))
         else:
             # NOT implemented yet.., just future-proofing
-            self.up6 = torch.nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            self.up6 = torch.nn.Sequential(torch.nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True))
 
         # According to the papers this should be 2x2, and no padding...
         # that would reduce the size by 1x1 and that would be incorrect...
@@ -75,21 +75,21 @@ class UNet(torch.nn.Module):
         if upsample_mode == 'transpose':
             self.conv6_1 = None
         else:
-            self.conv6_1 = torch.nn.Conv2d(1024, 512, kernel_size=1, stride=1)
-        self.conv6_2 = torch.nn.Conv2d(1024, 512, kernel_size=3, stride=1, padding=0)
-        self.conv6_3 = torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=0)
+            self.conv6_1 = torch.nn.Sequential(torch.nn.Conv2d(1024, 512, kernel_size=1, stride=1))
+        self.conv6_2 = torch.nn.Sequential(torch.nn.Conv2d(1024, 512, kernel_size=3, stride=1, padding=0),torch.nn.BatchNorm2d(512))#,torch.nn.Dropout(p=0.2))
+        self.conv6_3 = torch.nn.Sequential(torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=0),torch.nn.BatchNorm2d(512))#,torch.nn.Dropout(p=0.2))
         # Up sampling layer, depth: 2	(7)
         if (upsample_mode == 'linear'
                 or upsample_mode == 'bilinear'
                 or upsample_mode == 'trilinear'
                 or upsample_mode == 'nearest'):
 
-            self.up7 = torch.nn.Upsample(scale_factor=2, mode=upsample_mode, align_corners=True)
+            self.up7 = torch.nn.Sequential(torch.nn.Upsample(scale_factor=2, mode=upsample_mode, align_corners=True))
         elif upsample_mode == 'transpose':
-            self.up7 = torch.nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2)
+            self.up7 = torch.nn.Sequential(torch.nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2))
         else:
             # NOT implemented yet.., just future-proofing
-            self.up7 = torch.nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            self.up7 = torch.nn.Sequential(torch.nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True))
 
         # According to the papers this should be 2x2, and no padding...
         # that would reduce the size by 1x1 and that would be incorrect...
@@ -97,9 +97,9 @@ class UNet(torch.nn.Module):
         if upsample_mode == 'transpose':
             self.conv7_1 = None
         else:
-            self.conv7_1 = torch.nn.Conv2d(512, 256, kernel_size=1, stride=1)
-        self.conv7_2 = torch.nn.Conv2d(512, 256, kernel_size=3, stride=1, padding=0)
-        self.conv7_3 = torch.nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=0)
+            self.conv7_1 = torch.nn.Sequential(torch.nn.Conv2d(512, 256, kernel_size=1, stride=1))
+        self.conv7_2 = torch.nn.Sequential(torch.nn.Conv2d(512, 256, kernel_size=3, stride=1, padding=0),torch.nn.BatchNorm2d(256))#,torch.nn.Dropout(p=0.2))
+        self.conv7_3 = torch.nn.Sequential(torch.nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=0),torch.nn.BatchNorm2d(256))#,torch.nn.Dropout(p=0.2))
 
         # Up sampling layer, depth: 1	(8)
         if (upsample_mode == 'linear'
@@ -107,12 +107,12 @@ class UNet(torch.nn.Module):
                 or upsample_mode == 'trilinear'
                 or upsample_mode == 'nearest'):
 
-            self.up8 = torch.nn.Upsample(scale_factor=2, mode=upsample_mode, align_corners=True)
+            self.up8 = torch.nn.Sequential(torch.nn.Upsample(scale_factor=2, mode=upsample_mode, align_corners=True))
         elif upsample_mode == 'transpose':
-            self.up8 = torch.nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2)
+            self.up8 = torch.nn.Sequential(torch.nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2))
         else:
             # NOT implemented yet.., just future-proofing
-            self.up8 = torch.nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            self.up8 = torch.nn.Sequential(torch.nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True))
 
         # According to the papers this should be 2x2, and no padding...
         # that would reduce the size by 1x1 and that would be incorrect...
@@ -120,9 +120,9 @@ class UNet(torch.nn.Module):
         if upsample_mode == 'transpose':
             self.conv8_1 = None
         else:
-            self.conv8_1 = torch.nn.Conv2d(256, 128, kernel_size=1, stride=1)
-        self.conv8_2 = torch.nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=0)
-        self.conv8_3 = torch.nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=0)
+            self.conv8_1 = torch.nn.Sequential(torch.nn.Conv2d(256, 128, kernel_size=1, stride=1))
+        self.conv8_2 = torch.nn.Sequential(torch.nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=0),torch.nn.BatchNorm2d(128))#,torch.nn.Dropout(p=0.2))
+        self.conv8_3 = torch.nn.Sequential(torch.nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=0),torch.nn.BatchNorm2d(128))#,torch.nn.Dropout(p=0.2))
 
         # Up sampling layer, depth: 0	(9)
         if (upsample_mode == 'linear'
@@ -130,12 +130,12 @@ class UNet(torch.nn.Module):
                 or upsample_mode == 'trilinear'
                 or upsample_mode == 'nearest'):
 
-            self.up9 = torch.nn.Upsample(scale_factor=2, mode=upsample_mode, align_corners=True)
+            self.up9 = torch.nn.Sequential(torch.nn.Upsample(scale_factor=2, mode=upsample_mode, align_corners=True))
         elif upsample_mode == 'transpose':
-            self.up9 = torch.nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2)
+            self.up9 = torch.nn.Sequential(torch.nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2))
         else:
             # NOT implemented yet.., just future-proofing
-            self.up9 = torch.nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            self.up9 = torch.nn.Sequential(torch.nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True))
 
         # According to the papers this should be 2x2, and no padding...
         # that would reduce the size by 1x1 and that would be incorrect...
@@ -143,12 +143,12 @@ class UNet(torch.nn.Module):
         if upsample_mode == 'transpose':
             self.conv9_1 = None
         else:
-            self.conv9_1 = torch.nn.Conv2d(128, 64, kernel_size=1, stride=1)
-        self.conv9_2 = torch.nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=0)
-        self.conv9_3 = torch.nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0)
+            self.conv9_1 = torch.nn.Sequential(torch.nn.Conv2d(128, 64, kernel_size=1, stride=1))
+        self.conv9_2 = torch.nn.Sequential(torch.nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=0))
+        self.conv9_3 = torch.nn.Sequential(torch.nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0))
 
         # Output layer, depth: 0			(10)
-        self.conv10_1 = torch.nn.Conv2d(64, 1, kernel_size=1, stride=1)
+        self.conv10_1 = torch.nn.Sequential(torch.nn.Conv2d(64, 1, kernel_size=1, stride=1))
 
         # Softmax.. why not...
         # self.softmax = torch.nn.Softmax2d()

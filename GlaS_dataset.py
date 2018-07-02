@@ -30,19 +30,20 @@ from data_augmentation.tensor import ToTensor
 from data_augmentation.transpose_and_sqeeze import TransposeAndSqueeze
 import matplotlib
 from torchvision import utils, transforms
-import os
+
 from PIL import Image
-data_path = "data/GlaS/"
+
+data_path = "../GitHub/data/GlaS/"
+# data_path = "../data/__datasets/"#datasets/"
+# grade_file = "grd.csv"
 grade_file = "Grade.csv"
-result_path = "final_results"
-test_output_path = result_path + '/test_info'
-if not os.path.exists(test_output_path):
-    os.makedirs(test_output_path)
+
+
 class GlaSDataset(Dataset):
     """ GlaS Dataset  """
 
     def __init__(self, csv_file=data_path + grade_file, root_dir=data_path, transform=lambda x: x,
-                 desired_dataset=None, data_expansion_factor: int=1):
+                 desired_dataset=None, data_expansion_factor: int = 1):
         """
         Arguments:
             csv_file: path to the grade csv-file
@@ -73,10 +74,8 @@ class GlaSDataset(Dataset):
         if desired_dataset:
             self.framework = self.framework[self.framework['name'].str.contains(desired_dataset)]
 
-
         self.root_dir = root_dir
         self.transform = transform
-        
 
     def __len__(self):
         # artificially "clone" the dataset to get more images.
@@ -103,38 +102,42 @@ class GlaSDataset(Dataset):
         GlaS = self.framework.iloc[index, 2]
         grade = self.framework.iloc[index, 3]
 
-
         # Calculating Weight Map for Loss:
         sig = 5
         w_0 = 10
-        glands = np.unique(image_anno) # should include zero for background, [0,1,2,...]
+        glands = np.unique(image_anno)  # should include zero for background, [0,1,2,...]
         gland_num = len(glands) - 1  # -1 for removing background from calculation
         if len(glands) == 1:
-            if 0 in glands:# If all the image is just backgound and no gland:
+            if 0 in glands:  # If all the image is just backgound and no gland:
                 weight_map = np.zeros((1, image_anno.shape[0], image_anno.shape[1]))
-            elif not(0 in glands):# If all the image is just 1 gland and there is no background:
+            elif not (0 in glands):  # If all the image is just 1 gland and there is no background:
                 weight_map = 1 + w_0 * np.ones((1, image_anno.shape[0], image_anno.shape[1]))
         else:
             w = np.inf * np.ones((gland_num, image_anno.shape[0], image_anno.shape[1]))
-            for g  in range(0, gland_num):
-                filtered_anno = (~(image_anno == g + 1)).astype(int)# Filter out all glands except g th one.
-                w[g] = ndimage.distance_transform_edt(filtered_anno)# Calculate the distance to nearest point in g th gland for every pixel:
+            for g in range(0, gland_num):
+                filtered_anno = (~(image_anno == g + 1)).astype(int)  # Filter out all glands except g th one.
+                w[g] = ndimage.distance_transform_edt(
+                    filtered_anno)  # Calculate the distance to nearest point in g th gland for every pixel:
             d1_plus_d2 = np.sum(np.sort(w, axis=0)[0:min(2, gland_num)], axis=0)
             if gland_num == 1:
                 weight_map = np.ones(d1_plus_d2.shape)
             else:
-                dist = -(d1_plus_d2 ** 2) / (2 * sig ** 2)# Find 2 minimum distances for every pixel:
+                dist = -(d1_plus_d2 ** 2) / (2 * sig ** 2)  # Find 2 minimum distances for every pixel:
                 weight_map = 1 + w_0 * np.exp(dist)
         weight_map = 1000 * weight_map
 
-        if self.ds == 'test':  
-            matplotlib.image.imsave("{}/{}-org-weights.png".format(test_output_path, self.framework.iloc[index, 0]), weight_map)
-            matplotlib.image.imsave("{}/{}-org-image.png".format(test_output_path, self.framework.iloc[index, 0]), image)
+        if self.ds == 'test':
+            result_path = "results"
+            test_output_path = result_path + '/test_info'
+            matplotlib.image.imsave(
+                "{}/otiginal_weights_{}.png".format(test_output_path, self.framework.iloc[index, 0]), weight_map)
+            matplotlib.image.imsave("{}/otiginal_image_{}.png".format(test_output_path, self.framework.iloc[index, 0]),
+                                    image)
 
-        image, image_anno, weight_map = self.transform((image, image_anno,weight_map.astype(np.float32)))
+        image, image_anno, weight_map = self.transform((image, image_anno, weight_map.astype(np.float32)))
 
-
-        return {'image': image, 'image_anno': image_anno, 'loss_weight': weight_map, 'patient_id': patient_id, 'GlaS': GlaS,
+        return {'image': image, 'image_anno': image_anno, 'loss_weight': weight_map, 'patient_id': patient_id,
+                'GlaS': GlaS,
                 'grade': grade, 'name': img_name}
 
 
