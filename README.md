@@ -20,6 +20,7 @@ https://drive.google.com/open?id=1g6dhJ80zjqVA3hyQotxnbi2ZpLIzdlSl
 
 Please type this in bash for training and evaluation:
 bash run_exp.sh
+
 Then you may run this for evaluation on test set:
 bash run_eval.sh
 
@@ -35,5 +36,6 @@ If you wish to evaluate another experiment naturally you have to change experime
 
 #----------------------- Results and models -----------------------
 
-all the models will be save in trained_models folder in a folder with a name corresponding to their loss type and experiment number
-all results will be saved in the same directory in the final_results folder
+all the models will be save in trained_models folder in a folder with a name corresponding to their loss type and experiment number. 
+
+all results will be saved in the same directory in the final_results folder.
